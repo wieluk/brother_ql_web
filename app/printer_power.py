@@ -22,7 +22,7 @@ def printer_power_status():
         return jsonify({"state": state})
     except Exception as e:
         current_app.logger.error(f"Failed to get printer power status: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Failed to get printer power status"}), 500
 
 
 @bp.route("/api/printer_power/toggle", methods=["POST"])
@@ -42,4 +42,4 @@ def printer_power_toggle():
         return jsonify({"result": "success"})
     except Exception as e:
         current_app.logger.error(f"Failed to toggle printer power: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Failed to toggle printer power"}), 500
