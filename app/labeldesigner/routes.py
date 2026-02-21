@@ -7,7 +7,7 @@ from PIL import Image
 from werkzeug.datastructures import FileStorage
 from .printer import PrinterQueue, get_ptr_status
 from brother_ql.labels import ALL_LABELS, FormFactor
-from .label import SimpleLabel, LabelContent, LabelOrientation, LabelType
+from .label import SimpleLabel, ShippingLabel, LabelContent, LabelOrientation, LabelType
 from flask import Request, current_app, json, jsonify, render_template, request, make_response
 from werkzeug.utils import secure_filename
 from app.utils import (
@@ -583,6 +583,39 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
                         image = convert_image_to_bw(pil_img, context['image_bw_threshold'])
             except Exception:
                 current_app.logger.exception('Failed to load repository image')
+
+    if print_type == 'shipping':
+        default_family, default_style = FONTS.get_default_font()
+        font_path = FONTS.get_path(f"{default_family},{default_style}")
+        if context['text']:
+            font_path = context['text'][0].get('path', font_path)
+        return ShippingLabel(
+            width=width,
+            height=height,
+            label_type=label_type,
+            label_orientation=label_orientation,
+            sender={
+                'name':     d.get('ship_sender_name', '').strip(),
+                'street':   d.get('ship_sender_street', '').strip(),
+                'zip_city': d.get('ship_sender_zip_city', '').strip(),
+                'country':  d.get('ship_sender_country', '').strip(),
+            },
+            recipient={
+                'company':  d.get('ship_recip_company', '').strip(),
+                'name':     d.get('ship_recip_name', '').strip(),
+                'street':   d.get('ship_recip_street', '').strip(),
+                'zip_city': d.get('ship_recip_zip_city', '').strip(),
+                'country':  d.get('ship_recip_country', '').strip(),
+            },
+            tracking_number=d.get('ship_tracking', '').strip(),
+            font_path=font_path,
+            margin=(
+                int(context['margin_left']),
+                int(context['margin_right']),
+                int(context['margin_top']),
+                int(context['margin_bottom']),
+            ),
+        )
 
     return SimpleLabel(
         width=width,

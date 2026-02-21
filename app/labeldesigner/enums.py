@@ -9,6 +9,7 @@ class LabelContent(Enum):
     IMAGE_GRAYSCALE = auto()
     IMAGE_RED_BLACK = auto()
     IMAGE_COLORED = auto()
+    SHIPPING_LABEL = auto()
 
 
 class LabelOrientation(Enum):

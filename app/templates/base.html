@@ -52,46 +52,50 @@
     <body{% block body_attribs %}{% endblock body_attribs %}>
     {% block body -%}
     {% block navbar %}
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" id="mainNavbar">
-        <div class="container">
-            <a class="navbar-brand" href="#">Label Designer</a>
+    <nav class="navbar navbar-expand-lg navbar-dark" id="mainNavbar">
+        <div class="container-fluid" style="max-width: 1400px;">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+                <span class="fas fa-tag" aria-hidden="true"></span>
+                Label Designer
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+                <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarContent">
-                <ul class="navbar-nav ms-auto d-flex align-items-center" style="width: 100%;">
+                <ul class="navbar-nav d-flex align-items-center gap-1 w-100">
                     <li class="nav-item">
-                        <a class="nav-link" href="https://github.com/DL6ER/brother_ql_web" target="_blank"><i class="fab fa-github"></i> Source code</a>
+                        <a class="nav-link" href="https://github.com/wieluk/brother_ql_web" target="_blank" rel="noopener">
+                            <i class="fab fa-github"></i> Source
+                        </a>
                     </li>
-                    <li class="m-1 align-items-center">
-                        <button id="resetSettings" class="btn btn-danger btn-sm" title="Reset label"><span
-                                class="fas fa-trash"></span>
-                            Reset</button>
-                    </li>
-                    <li class="m-1 align-items-center">
-                        <button id="undoSettingsBtn" class="btn btn-warning btn-sm position-relative" disabled>
-                            <i class="fas fa-undo"></i>
-                            Undo
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-secondary">
-                                <span id="undoCounter">0</span>
-                            <span class="visually-hidden">undo steps available</span>
-                        </span>
+                    <li class="nav-item">
+                        <button id="resetSettings" class="btn btn-outline-danger btn-sm" title="Reset label settings">
+                            <span class="fas fa-trash"></span> Reset
                         </button>
                     </li>
-                    <li class="m-1 align-items-center">
-                        <button id="openRepoBtn" class="btn btn-secondary" type="button">Repository</button>
+                    <li class="nav-item">
+                        <button id="undoSettingsBtn" class="btn btn-outline-warning btn-sm position-relative" disabled title="Undo last change">
+                            <i class="fas fa-undo"></i> Undo
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-secondary">
+                                <span id="undoCounter">0</span>
+                                <span class="visually-hidden">undo steps available</span>
+                            </span>
+                        </button>
                     </li>
-                    <li class="nav-item d-flex align-items-center ms-auto me-3">
-                        <span class="nav-link pr-2 d-flex align-items-center gap-2 justify-content-end">
-                            <span class="fas fa-print" aria-hidden="true" id="printerIcon"></span>
-                            <label for="printer" class="form-label mb-0 me-2" style="font-size:0.9rem; color:var(--bs-body-color);">Printer:</label>
-                            <select id="printer" class="form-select form-select-sm" onchange="preview()" style="min-width:220px">
-                                <!-- populated dynamically -->
-                            </select>
-                        </span>
+                    <li class="nav-item">
+                        <button id="openRepoBtn" class="btn btn-outline-light btn-sm" type="button">
+                            <span class="fas fa-folder-open me-1"></span>Repository
+                        </button>
                     </li>
-                    <li class="nav-item position-absolute end-0 top-0 mt-2 me-4" style="z-index: 1050;">
-                        <div id="darkModeToggle" style="cursor: pointer; font-size: 1.6em; color: #fff;" title="Toggle dark mode">
+                    <li class="nav-item d-flex align-items-center ms-auto">
+                        <span class="fas fa-print me-2 text-white-50" aria-hidden="true"></span>
+                        <label for="printer" class="form-label mb-0 me-2 text-white-50 small">Printer:</label>
+                        <select id="printer" class="form-select form-select-sm navbar-printer-select" onchange="preview()" style="min-width:220px">
+                            <!-- populated dynamically -->
+                        </select>
+                    </li>
+                    <li class="nav-item d-flex align-items-center ms-2">
+                        <div id="darkModeToggle" style="cursor: pointer; font-size: 1.4em; color: rgba(255,255,255,0.8);" title="Toggle dark mode">
                             <span id="darkModeIcon" style="transition: color 0.2s;"></span>
                         </div>
                     </li>
@@ -101,7 +105,7 @@
     </nav>
         {%- endblock navbar %}
         {% block content -%}
-        <div class="container">
+        <div class="container-fluid px-3 px-md-4" style="max-width: 1400px;">
             {# application content needs to be provided in the app_content block #}
             {% block app_content %}{% endblock %}
         </div>

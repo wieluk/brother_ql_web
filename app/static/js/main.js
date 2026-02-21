@@ -230,6 +230,18 @@ function formData(cut_once = false) {
     }
     data['code_text'] = $('#code_text').val() || '';
 
+    // Shipping label fields (always included; server ignores when not in shipping mode)
+    data['ship_sender_name']     = $('#ship_sender_name').val()     || '';
+    data['ship_sender_street']   = $('#ship_sender_street').val()   || '';
+    data['ship_sender_zip_city'] = $('#ship_sender_zip_city').val() || '';
+    data['ship_sender_country']  = $('#ship_sender_country').val()  || '';
+    data['ship_recip_company']   = $('#ship_recip_company').val()   || '';
+    data['ship_recip_name']      = $('#ship_recip_name').val()      || '';
+    data['ship_recip_street']    = $('#ship_recip_street').val()    || '';
+    data['ship_recip_zip_city']  = $('#ship_recip_zip_city').val()  || '';
+    data['ship_recip_country']   = $('#ship_recip_country').val()   || '';
+    data['ship_tracking']        = $('#ship_tracking').val()        || '';
+
     // Include selected printer if available
     const printerSelect = document.getElementById('printer');
     if (printerSelect && printerSelect.value) {
@@ -287,11 +299,23 @@ function gen_label(preview = true, cut_once = false) {
         }
     }
 
-    // Show or hide image upload box
-    if ($('input[name=print_type]:checked').val() == 'image') {
+    // Show or hide panels based on print type
+    const printType = $('input[name=print_type]:checked').val();
+    if (printType === 'image') {
         $('#groupLabelImage').show();
     } else {
         $('#groupLabelImage').hide();
+    }
+    if (printType === 'shipping') {
+        $('#groupShipping').show();
+        $('#groupLabelText').hide();
+    } else {
+        $('#groupShipping').hide();
+        if (printType !== 'image') {
+            $('#groupLabelText').show();
+        } else {
+            $('#groupLabelText').hide();
+        }
     }
 
     // Update status box
