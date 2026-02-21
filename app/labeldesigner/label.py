@@ -596,6 +596,19 @@ class ShippingLabel:
         self._font_path = font_path
         self._margin = margin
 
+    @property
+    def label_type(self):
+        return self._label_type
+
+    @property
+    def label_orientation(self):
+        return self._label_orientation
+
+    @property
+    def label_content(self):
+        # Shipping labels are always rendered as structured text (not an image)
+        return LabelContent.TEXT_ONLY
+
     def _get_font(self, size: int) -> ImageFont.FreeTypeFont:
         if not self._font_path:
             return ImageFont.load_default()
