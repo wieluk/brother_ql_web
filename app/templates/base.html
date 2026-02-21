@@ -1,19 +1,25 @@
 {% block doc -%}
 <!DOCTYPE html>
 <html{% block html_attribs %}{% endblock html_attribs %}>
-{%- block html %}
+    {%- block html %}
+
     <head>
         {%- block metas %}
         <!-- Required meta tags -->
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <meta name="msapplication-TileColor" content="#ffffff">
-        <meta name="msapplication-TileImage" content="{{url_for('static', filename='images/favicon/ms-icon-144x144.png')}}">
+        <meta name="msapplication-TileImage"
+            content="{{url_for('static', filename='images/favicon/ms-icon-144x144.png')}}">
         <meta name="theme-color" content="#ffffff">
-        <link rel="apple-touch-icon" sizes="57x57" href="{{url_for('static', filename='images/favicon/apple-icon-57x57.png')}}">
-        <link rel="apple-touch-icon" sizes="60x60" href="{{url_for('static', filename='images/favicon/apple-icon-60x60.png')}}">
-        <link rel="apple-touch-icon" sizes="72x72" href="{{url_for('static', filename='images/favicon/apple-icon-72x72.png')}}">
-        <link rel="apple-touch-icon" sizes="76x76" href="{{url_for('static', filename='images/favicon/apple-icon-76x76.png')}}">
+        <link rel="apple-touch-icon" sizes="57x57"
+            href="{{url_for('static', filename='images/favicon/apple-icon-57x57.png')}}">
+        <link rel="apple-touch-icon" sizes="60x60"
+            href="{{url_for('static', filename='images/favicon/apple-icon-60x60.png')}}">
+        <link rel="apple-touch-icon" sizes="72x72"
+            href="{{url_for('static', filename='images/favicon/apple-icon-72x72.png')}}">
+        <link rel="apple-touch-icon" sizes="76x76"
+            href="{{url_for('static', filename='images/favicon/apple-icon-76x76.png')}}">
         <link rel="apple-touch-icon" sizes="114x114"
             href="{{url_for('static', filename='images/favicon/apple-icon-114x114.png')}}">
         <link rel="apple-touch-icon" sizes="120x120"
@@ -32,7 +38,8 @@
             href="{{url_for('static', filename='images/favicon/favicon-96x96.png')}}">
         <link rel="icon" type="image/png" sizes="16x16"
             href="{{url_for('static', filename='images/favicon/favicon-16x16.png')}}">
-        <link rel="shortcut icon" type="image/x-icon" href="{{url_for('static', filename='images/favicon/favicon.ico')}}">
+        <link rel="shortcut icon" type="image/x-icon"
+            href="{{url_for('static', filename='images/favicon/favicon.ico')}}">
         <link rel="manifest" href="{{url_for('static', filename='images/favicon/manifest.json')}}">
         {%- endblock metas %}
         {%- block head %}
@@ -94,6 +101,14 @@
                             <!-- populated dynamically -->
                         </select>
                     </li>
+                    {% if ha_configured %}
+                    <li class="nav-item d-flex align-items-center ms-2">
+                        <button id="printerPowerBtn" class="btn btn-outline-info btn-sm d-flex align-items-center" type="button" title="Toggle printer power">
+                            <span id="printerPowerIcon" class="fas fa-plug me-2"></span>
+                            <span id="printerPowerStatus">...</span>
+                        </button>
+                    </li>
+                    {% endif %}
                     <li class="nav-item d-flex align-items-center ms-2">
                         <div id="darkModeToggle" style="cursor: pointer; font-size: 1.4em; color: rgba(255,255,255,0.8);" title="Toggle dark mode">
                             <span id="darkModeIcon" style="transition: color 0.2s;"></span>
@@ -103,13 +118,13 @@
             </div>
         </div>
     </nav>
-        {%- endblock navbar %}
-        {% block content -%}
-        <div class="container-fluid px-3 px-md-4" style="max-width: 1400px;">
-            {# application content needs to be provided in the app_content block #}
-            {% block app_content %}{% endblock %}
-        </div>
-        {%- endblock content %}
+    {%- endblock navbar %}
+    {% block content -%}
+    <div class="container-fluid px-3 px-md-4" style="max-width: 1400px;">
+        {# application content needs to be provided in the app_content block #}
+        {% block app_content %}{% endblock %}
+    </div>
+    {%- endblock content %}
 
     {% block scripts %}
     <script src="{{url_for('static', filename='js/bootstrap.bundle.min.js')}}"></script>
@@ -124,6 +139,6 @@
     {%- endblock scripts %}
     {%- endblock body %}
     </body>
-{%- endblock html %}    
+{%- endblock html %}
 </html>
 {% endblock doc -%}

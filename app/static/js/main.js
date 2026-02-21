@@ -1,3 +1,72 @@
+// --- Printer Power Button (Home Assistant integration) ---
+const HA_POLL_INTERVAL = 10000;      // normal HA status poll: 10s
+const SCAN_NORMAL_INTERVAL = 30000;  // normal printer scan: 30s
+const SCAN_FAST_INTERVAL = 2000;     // fast printer scan after power-on: 2s
+const SCAN_FAST_DURATION = 60000;    // stay in fast mode for 60s
+
+let _printerScanTimer = null;
+
+function _startNormalPrinterPolling() {
+    if (_printerScanTimer) clearInterval(_printerScanTimer);
+    _printerScanTimer = setInterval(getPrinterStatus, SCAN_NORMAL_INTERVAL);
+}
+
+function _startFastPrinterPolling() {
+    if (_printerScanTimer) clearInterval(_printerScanTimer);
+    _printerScanTimer = setInterval(getPrinterStatus, SCAN_FAST_INTERVAL);
+    setTimeout(_startNormalPrinterPolling, SCAN_FAST_DURATION);
+}
+
+function updatePrinterPowerStatus() {
+    fetch('/api/printer_power/status')
+        .then(r => r.json())
+        .then(data => {
+            const btn = document.getElementById('printerPowerBtn');
+            const icon = document.getElementById('printerPowerIcon');
+            const status = document.getElementById('printerPowerStatus');
+            if (!btn) return;
+            if (data.state === 'on') {
+                icon.classList.remove('fa-plug', 'text-danger');
+                icon.classList.add('fa-bolt', 'text-success');
+                status.textContent = 'On';
+                btn.classList.remove('btn-outline-info');
+                btn.classList.add('btn-success');
+            } else if (data.state === 'off') {
+                icon.classList.remove('fa-bolt', 'text-success');
+                icon.classList.add('fa-plug', 'text-danger');
+                status.textContent = 'Off';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-info');
+            } else {
+                icon.classList.remove('fa-bolt', 'fa-plug', 'text-success', 'text-danger');
+                status.textContent = 'Unknown';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-info');
+            }
+        })
+        .catch(() => { /* network error — leave button as-is */ });
+}
+
+function togglePrinterPower() {
+    fetch('/api/printer_power/toggle', { method: 'POST' })
+        .then(r => r.json())
+        .then(() => {
+            // Check new state after plug reacts (~1s)
+            setTimeout(updatePrinterPowerStatus, 1000);
+            // Speed up printer discovery for 60s so newly booted printer is found quickly
+            getPrinterStatus();
+            _startFastPrinterPolling();
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('printerPowerBtn');
+    if (btn) {
+        btn.addEventListener('click', togglePrinterPower);
+        updatePrinterPowerStatus();
+        setInterval(updatePrinterPowerStatus, HA_POLL_INTERVAL);
+    }
+});
 // Global printer status object to be populated from the API
 var printer_status = {
     'errors': [],
@@ -669,7 +738,7 @@ async function getPrinterStatus() {
             data.printers.forEach((p) => {
                 const opt = document.createElement('option');
                 opt.value = p.path || '';
-                const displayPath = p.path? p.path.replace(/file:\/\//g, '' ) : '';
+                const displayPath = p.path ? p.path.replace(/file:\/\//g, '') : '';
                 opt.textContent = (p.model || 'Unknown') + ' @ ' + displayPath;
                 select.appendChild(opt);
             });
@@ -954,7 +1023,7 @@ function repoSaveCurrent() {
         }).then(r => r.json())
             .then(resp => {
                 if (resp && (resp.success || resp.name)) {
-                    try { $('#repoSaveName').val(''); } catch (e) {}
+                    try { $('#repoSaveName').val(''); } catch (e) { }
                     loadRepositoryList();
                 } else {
                     alert('Save failed: ' + (resp && resp.message ? resp.message : 'Unknown'));
@@ -1023,7 +1092,7 @@ function repoLoad(name) {
                         .then(res => res.blob())
                         .then(blob => {
                             const file = new File([blob], img_name, { type: img_mime });
-                            try { imageDropZone.removeAllFiles(true); } catch (e) {}
+                            try { imageDropZone.removeAllFiles(true); } catch (e) { }
                             // Use Dropzone's API to add the file so it is
                             // processed identically to a user upload.
                             try {
@@ -1166,10 +1235,9 @@ window.onload = async function () {
     // Get supported barcodes
     get_barcode_types();
 
-    // Get printer status once ...
+    // Get printer status once, then poll every 30s (speeds up to 2s after power toggle)
     getPrinterStatus();
-    // ... and update it every 5 seconds
-    setInterval(getPrinterStatus, 5000);
+    _startNormalPrinterPolling();
 }
 
 function init2() {
