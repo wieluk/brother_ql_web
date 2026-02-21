@@ -1,4 +1,22 @@
 // --- Printer Power Button (Home Assistant integration) ---
+const HA_POLL_INTERVAL = 10000;      // normal HA status poll: 10s
+const SCAN_NORMAL_INTERVAL = 30000;  // normal printer scan: 30s
+const SCAN_FAST_INTERVAL = 2000;     // fast printer scan after power-on: 2s
+const SCAN_FAST_DURATION = 60000;    // stay in fast mode for 60s
+
+let _printerScanTimer = null;
+
+function _startNormalPrinterPolling() {
+    if (_printerScanTimer) clearInterval(_printerScanTimer);
+    _printerScanTimer = setInterval(getPrinterStatus, SCAN_NORMAL_INTERVAL);
+}
+
+function _startFastPrinterPolling() {
+    if (_printerScanTimer) clearInterval(_printerScanTimer);
+    _printerScanTimer = setInterval(getPrinterStatus, SCAN_FAST_INTERVAL);
+    setTimeout(_startNormalPrinterPolling, SCAN_FAST_DURATION);
+}
+
 function updatePrinterPowerStatus() {
     fetch('/api/printer_power/status')
         .then(r => r.json())
@@ -39,7 +57,13 @@ function updatePrinterPowerStatus() {
 function togglePrinterPower() {
     fetch('/api/printer_power/toggle', { method: 'POST' })
         .then(r => r.json())
-        .then(() => setTimeout(updatePrinterPowerStatus, 1000));
+        .then(() => {
+            // Check new state after plug reacts (~1s)
+            setTimeout(updatePrinterPowerStatus, 1000);
+            // Speed up printer discovery for 60s so newly booted printer is found quickly
+            getPrinterStatus();
+            _startFastPrinterPolling();
+        });
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -47,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (btn) {
         btn.addEventListener('click', togglePrinterPower);
         updatePrinterPowerStatus();
-        setInterval(updatePrinterPowerStatus, 5000);
+        setInterval(updatePrinterPowerStatus, HA_POLL_INTERVAL);
     }
 });
 // Global printer status object to be populated from the API
@@ -1218,10 +1242,9 @@ window.onload = async function () {
     // Get supported barcodes
     get_barcode_types();
 
-    // Get printer status once ...
+    // Get printer status once, then poll every 30s (speeds up to 2s after power toggle)
     getPrinterStatus();
-    // ... and update it every 5 seconds
-    setInterval(getPrinterStatus, 5000);
+    _startNormalPrinterPolling();
 }
 
 function init2() {

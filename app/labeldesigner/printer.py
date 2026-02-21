@@ -104,6 +104,12 @@ _last_scan_ts = 0
 _cached_printers = []
 
 
+def reset_printer_cache():
+    global _last_scan_ts, _cached_printers
+    _last_scan_ts = 0
+    _cached_printers = []
+
+
 def get_ptr_status(config: Config):
     # Simple in-memory cache for detected printers
     global _last_scan_ts, _cached_printers
@@ -152,8 +158,8 @@ def get_ptr_status(config: Config):
         # If device_specifier is the default '?', try to auto-detect multiple printers
         if device_specifier == '?':
             now = time.time()
-            # Refresh cache every 10 seconds
-            if now - _last_scan_ts > 10:
+            # Refresh cache every 30 seconds (reset to 0 via reset_printer_cache() after power toggle)
+            if now - _last_scan_ts > 30:
                 logger.debug('Auto-detecting printers: scanning /dev/usb/lp0..lp10')
                 found_list = []
                 for i in range(0, 11):

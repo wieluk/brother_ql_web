@@ -1,6 +1,7 @@
 import requests
-from flask import Blueprint, jsonify, current_app, request
+from flask import Blueprint, jsonify, current_app
 from app.utils_homeassistant import HomeAssistantConfig
+from app.labeldesigner.printer import reset_printer_cache
 
 bp = Blueprint("printer_power", __name__)
 
@@ -39,6 +40,7 @@ def printer_power_toggle():
     try:
         resp = requests.post(url, headers=headers, json=data, timeout=5)
         resp.raise_for_status()
+        reset_printer_cache()
         return jsonify({"result": "success"})
     except Exception as e:
         current_app.logger.error(f"Failed to toggle printer power: {e}")
