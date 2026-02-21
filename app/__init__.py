@@ -45,6 +45,12 @@ def create_app(config_class=Config) -> Flask:
     from app.printer_power import bp as printer_power_bp
     app.register_blueprint(printer_power_bp)
 
+    from app.utils_homeassistant import HomeAssistantConfig
+
+    @app.context_processor
+    def inject_ha_config():
+        return {'ha_configured': HomeAssistantConfig().is_configured()}
+
     return app
 
 

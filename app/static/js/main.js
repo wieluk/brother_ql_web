@@ -24,6 +24,7 @@ function updatePrinterPowerStatus() {
             const btn = document.getElementById('printerPowerBtn');
             const icon = document.getElementById('printerPowerIcon');
             const status = document.getElementById('printerPowerStatus');
+            if (!btn) return;
             if (data.state === 'on') {
                 icon.classList.remove('fa-plug', 'text-danger');
                 icon.classList.add('fa-bolt', 'text-success');
@@ -43,15 +44,7 @@ function updatePrinterPowerStatus() {
                 btn.classList.add('btn-outline-info');
             }
         })
-        .catch(() => {
-            const btn = document.getElementById('printerPowerBtn');
-            const icon = document.getElementById('printerPowerIcon');
-            const status = document.getElementById('printerPowerStatus');
-            icon.classList.remove('fa-bolt', 'fa-plug', 'text-success', 'text-danger');
-            status.textContent = 'Error';
-            btn.classList.remove('btn-success');
-            btn.classList.add('btn-outline-info');
-        });
+        .catch(() => { /* network error — leave button as-is */ });
 }
 
 function togglePrinterPower() {
