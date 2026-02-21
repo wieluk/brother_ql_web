@@ -15,6 +15,28 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
+
+def _draw_dashed_line(draw, x0, y0, x1, y1, fill=(190, 190, 190), width=1, dash_len=8, gap_len=5):
+    """Draw a dashed line from (x0, y0) to (x1, y1)."""
+    dx, dy = x1 - x0, y1 - y0
+    length = (dx * dx + dy * dy) ** 0.5
+    if length == 0:
+        return
+    nx, ny = dx / length, dy / length
+    pos = 0.0
+    drawing = True
+    while pos < length:
+        seg = dash_len if drawing else gap_len
+        end_pos = min(pos + seg, length)
+        if drawing:
+            draw.line(
+                [(x0 + nx * pos, y0 + ny * pos), (x0 + nx * end_pos, y0 + ny * end_pos)],
+                fill=fill, width=width
+            )
+        pos = end_pos
+        drawing = not drawing
+
+
 # Constants
 WARNING_TEXT_LENGTH = 500
 DEFAULT_RANDOM_LENGTH = 64
@@ -556,3 +578,541 @@ class SimpleLabel:
         except Exception as e:
             logger.error(f"Failed to load font '{font_path}' with size {size}: {e}")
             return ImageFont.load_default()
+
+
+class ShippingLabel:
+    """
+    Renders a structured shipping label with sender, recipient address blocks
+    and an optional tracking-number QR code. Designed for continuous tape
+    (e.g. DK-22205 62 mm). Works with fixed-size die-cut labels too (content
+    is clipped to the canvas).
+
+    German field names are used on the label ("Von:" / "An:").
+    """
+
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        label_type: LabelType,
+        label_orientation: LabelOrientation,
+        sender: dict,
+        recipient: dict,
+        tracking_number: str = '',
+        font_path: str = '',
+        sender_font_path: str = '',
+        tracking_barcode_type: str = 'code128',
+        sender_font_size: int = 0,
+        recipient_font_size: int = 0,
+        margin: Tuple[int, int, int, int] = (20, 20, 15, 15),
+        section_spacing: int = 0,
+        barcode_scale: int = 0,
+        barcode_show_text: bool = False,
+        from_label: str = '',
+        to_label: str = '',
+        recipient_border: bool = False,
+        sender_line_spacing: int = 100,
+        recipient_line_spacing: int = 100,
+    ):
+        """
+        :param sender:               dict with keys: name, street, zip_city, country
+        :param recipient:            dict with keys: company (optional), name, street,
+                                     zip_city, country
+        :param font_path:            font for recipient section (and fallback)
+        :param sender_font_path:     font for sender section (defaults to font_path)
+        :param tracking_barcode_type: barcode type for tracking number ('code128', 'qr', etc.)
+        :param sender_font_size:     base font size for sender section (0 = auto)
+        :param recipient_font_size:  base font size for recipient section (0 = auto)
+        :param margin:               (left, right, top, bottom) in pixels
+        :param section_spacing:       extra gap (px) at the From/To divider; 0 = auto
+        :param barcode_scale:         tracking barcode scale as percentage of default; 0 = auto
+        :param barcode_show_text:     embed tracking number text inside the barcode image
+        :param from_label:            override the "From:" section header (empty = default)
+        :param to_label:              override the "To:" section header (empty = default)
+        :param recipient_border:      draw a rectangle border around the recipient block
+        :param sender_line_spacing:   line spacing % for sender section (100 = normal)
+        :param recipient_line_spacing: line spacing % for recipient section (100 = normal)
+        """
+        self._width = width
+        self._height = height
+        self._label_type = label_type
+        self._label_orientation = label_orientation
+        self.sender = sender
+        self.recipient = recipient
+        self.tracking_number = tracking_number
+        self._font_path = font_path
+        self._sender_font_path = sender_font_path or font_path
+        self._tracking_barcode_type = (tracking_barcode_type or 'code128').strip().lower()
+        self._sender_font_size = max(sender_font_size or 0, 0)
+        self._recipient_font_size = max(recipient_font_size or 0, 0)
+        self._margin = margin
+        self._section_spacing = max(section_spacing or 0, 0)
+        self._barcode_scale = max(barcode_scale or 0, 0)
+        self._barcode_show_text = bool(barcode_show_text)
+        self._from_label = (from_label or '').strip() or 'From:'
+        self._to_label = (to_label or '').strip() or 'To:'
+        self._recipient_border = bool(recipient_border)
+        self._sender_line_spacing = max(sender_line_spacing or 100, 100)
+        self._recipient_line_spacing = max(recipient_line_spacing or 100, 100)
+
+    @property
+    def label_type(self):
+        return self._label_type
+
+    @property
+    def label_orientation(self):
+        return self._label_orientation
+
+    @property
+    def label_content(self):
+        # Shipping labels are always rendered as structured text (not an image)
+        return LabelContent.TEXT_ONLY
+
+    def _get_font(self, size: int, font_path: str = '') -> ImageFont.FreeTypeFont:
+        path = font_path or self._font_path
+        if not path:
+            return ImageFont.load_default()
+        key = (path, size)
+        if key in FONT_CACHE:
+            return FONT_CACHE[key]
+        try:
+            font = ImageFont.truetype(path, size)
+            FONT_CACHE[key] = font
+            return font
+        except Exception as e:
+            logger.error(f"ShippingLabel: failed to load font '{path}' size {size}: {e}")
+            return ImageFont.load_default()
+
+    def _generate_tracking_image(self, write_text: bool = False) -> Optional[Image.Image]:
+        """Generate a tracking-number barcode or QR image (no text embedded)."""
+        if not self.tracking_number:
+            return None
+        bc_type = self._tracking_barcode_type
+        if bc_type == 'qr':
+            qr = QRCode(
+                version=1,
+                error_correction=constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=1,
+            )
+            qr.add_data(self.tracking_number)
+            qr.make(fit=True)
+            return qr.make_image(fill_color='black', back_color='white').convert('RGB')
+        else:
+            try:
+                bc_class = barcode.get_barcode_class(bc_type)
+            except Exception:
+                bc_class = barcode.get_barcode_class('code128')
+            bc_obj = bc_class(self.tracking_number, writer=ImageWriter())
+            return bc_obj.render(writer_options={'write_text': write_text, 'quiet_zone': 2}).convert('RGB')
+
+    def generate(self, rotate: bool = False) -> Image.Image:
+        if self._label_type == LabelType.ENDLESS_LABEL:
+            return self._generate_landscape()
+        return self._generate_portrait()
+
+    def _build_line_lists(self, font_section, font_sender, font_rname, font_rdetail,
+                          sender_pad: int, recip_pad: int):
+        """Build (text, font, color, extra_top_padding) tuples for sender and recipient."""
+        COLOR_GRAY  = (130, 130, 130)
+        COLOR_BLACK = (0, 0, 0)
+
+        sender_lines: List[Tuple[str, Any, Tuple, int]] = [
+            (self._from_label, font_section, COLOR_GRAY, 0),
+        ]
+        if self.sender.get('name'):
+            sender_lines.append((self.sender['name'], font_sender, COLOR_BLACK, sender_pad))
+        if self.sender.get('street'):
+            sender_lines.append((self.sender['street'], font_sender, COLOR_BLACK, 0))
+        addr_parts = [p for p in [self.sender.get('zip_city'), self.sender.get('country')] if p]
+        if addr_parts:
+            sender_lines.append((" \u00b7 ".join(addr_parts), font_sender, COLOR_BLACK, 0))
+
+        recip_lines: List[Tuple[str, Any, Tuple, int]] = [
+            (self._to_label, font_section, COLOR_GRAY, 0),
+        ]
+        if self.recipient.get('company'):
+            recip_lines.append((self.recipient['company'], font_rdetail, COLOR_BLACK, recip_pad))
+        if self.recipient.get('name'):
+            recip_lines.append((self.recipient['name'], font_rname, COLOR_BLACK, recip_pad))
+        if self.recipient.get('street'):
+            recip_lines.append((self.recipient['street'], font_rdetail, COLOR_BLACK, recip_pad))
+        if self.recipient.get('zip_city'):
+            recip_lines.append((self.recipient['zip_city'], font_rdetail, COLOR_BLACK, 0))
+        if self.recipient.get('country'):
+            recip_lines.append((self.recipient['country'], font_rdetail, COLOR_BLACK, 0))
+
+        return sender_lines, recip_lines
+
+    def _generate_landscape(self) -> Image.Image:
+        """
+        Landscape layout for endless tape.  The tape's 62 mm dimension becomes
+        the image HEIGHT; width grows to fit content.  Sender is on the left,
+        recipient on the right, optional code column at the far right.
+
+        All font sizes are derived dynamically from the number of visible
+        recipient fields so that the content fills the full tape height
+        (rather than occupying only the top quarter at fixed small sizes).
+        """
+        ml, mr, mt, mb = self._margin
+        canvas_h  = max(self._height, 1)
+        usable_h  = max(canvas_h - mt - mb, 1)
+
+        COLOR_GRAY  = (130, 130, 130)
+        COLOR_BLACK = (0, 0, 0)
+        # Scale gaps with tape height so they stay proportional at 600dpi
+        DIVIDER_GAP = (self._section_spacing if self._section_spacing > 0
+                       else max(int(usable_h * 0.04), 24))
+        CODE_GAP    = max(int(usable_h * 0.03), 20)
+
+        # ── 1. Dynamic font sizing ────────────────────────────────────────────
+        # Count visible recipient content lines (excluding the "To:" header).
+        n_recip = sum(1 for k in ('company', 'name', 'street', 'zip_city', 'country')
+                      if self.recipient.get(k))
+        n_recip = max(1, min(5, n_recip))
+
+        # Budget per recipient line (0.5 extra slot allocated for the header).
+        line_h = usable_h / (n_recip + 0.5)
+
+        # Per-section font size overrides (0 = use dynamic default)
+        # Reference base size = 48 (app default).  Scale factor relative to that.
+        S_SCALE = (self._sender_font_size / 48.0) if self._sender_font_size > 0 else 1.0
+        R_SCALE = (self._recipient_font_size / 48.0) if self._recipient_font_size > 0 else 1.0
+
+        # Recipient sizes: dynamic with per-role minimum, then optionally boosted by R_SCALE
+        sz_rname    = max(int(line_h * 1.00), max(int(110 * R_SCALE), 40))
+        sz_rdetail  = max(int(line_h * 0.82), max(int( 90 * R_SCALE), 32))
+        sz_to       = max(int(line_h * 0.48), max(int( 52 * R_SCALE), 20))
+        # Sender sizes: dynamic with per-role minimum, then optionally boosted by S_SCALE
+        sz_sender   = max(int(line_h * 0.46), max(int( 48 * S_SCALE), 18))
+        sz_from     = max(int(line_h * 0.26), max(int( 30 * S_SCALE), 12))
+        sz_tracking = max(int(line_h * 0.14), 22)
+
+        sfp = self._sender_font_path   # sender font path (may differ from recipient)
+        font_rname    = self._get_font(sz_rname)
+        font_rdetail  = self._get_font(sz_rdetail)
+        font_to       = self._get_font(sz_to)
+        font_sender   = self._get_font(sz_sender, sfp)
+        font_from     = self._get_font(sz_from,   sfp)
+        font_tracking = self._get_font(sz_tracking)
+
+        # ── 2. Measurement canvas ─────────────────────────────────────────────
+        dummy  = Image.new('RGB', (16000, canvas_h), 'white')
+        draw_m = ImageDraw.Draw(dummy)
+
+        # ── 3. Text-wrap helper ───────────────────────────────────────────────
+        def wrap_text(text: str, font, max_px: int) -> List[str]:
+            """Break text at word boundaries; char-level fallback for long words."""
+            if not text:
+                return []
+            words = text.split()
+            lines: List[str] = []
+            current = ''
+            for word in words:
+                candidate = (current + ' ' + word).strip()
+                bb = draw_m.textbbox((0, 0), candidate, font=font, anchor='lt')
+                if bb[2] - bb[0] <= max_px:
+                    current = candidate
+                else:
+                    if current:
+                        lines.append(current)
+                    bb_w = draw_m.textbbox((0, 0), word, font=font, anchor='lt')
+                    if bb_w[2] - bb_w[0] <= max_px:
+                        current = word
+                    else:
+                        # Character-level fallback (rare: very long compound words)
+                        current = ''
+                        for ch in word:
+                            trial = current + ch
+                            bb_c = draw_m.textbbox((0, 0), trial, font=font, anchor='lt')
+                            if bb_c[2] - bb_c[0] <= max_px:
+                                current = trial
+                            else:
+                                lines.append(current)
+                                current = ch
+            if current:
+                lines.append(current)
+            return lines or ['']
+
+        # ── 4. Build sender line list (with wrapping) ─────────────────────────
+        SENDER_WRAP_PX = int(usable_h * 1.8)   # generous budget for sender column
+
+        sender_lines: List[Tuple[str, Any, Tuple, int]] = [
+            (self._from_label, font_from, COLOR_GRAY, 0),
+        ]
+        for field, base_pad in [
+            (self.sender.get('name',   ''), 4),
+            (self.sender.get('street', ''), 0),
+        ]:
+            if field:
+                for i, row in enumerate(wrap_text(field, font_sender, SENDER_WRAP_PX)):
+                    sender_lines.append((row, font_sender, COLOR_BLACK, base_pad if i == 0 else 2))
+
+        addr_parts = [p for p in [self.sender.get('zip_city'), self.sender.get('country')] if p]
+        if addr_parts:
+            combined = ' \u00b7 '.join(addr_parts)
+            for i, row in enumerate(wrap_text(combined, font_sender, SENDER_WRAP_PX)):
+                sender_lines.append((row, font_sender, COLOR_BLACK, 0 if i == 0 else 2))
+
+        # ── 5. Build recipient line list (with wrapping) ──────────────────────
+        RECIP_WRAP_PX = int(usable_h * 3.0)   # wide budget; wraps only very long lines
+
+        recip_lines: List[Tuple[str, Any, Tuple, int]] = [
+            (self._to_label, font_to, COLOR_GRAY, 0),
+        ]
+        recip_fields = []
+        if self.recipient.get('company'):
+            recip_fields.append((self.recipient['company'], font_rdetail, 6))
+        if self.recipient.get('name'):
+            recip_fields.append((self.recipient['name'],    font_rname,   6))
+        if self.recipient.get('street'):
+            recip_fields.append((self.recipient['street'],  font_rdetail, 6))
+        if self.recipient.get('zip_city'):
+            recip_fields.append((self.recipient['zip_city'], font_rdetail, 0))
+        if self.recipient.get('country'):
+            recip_fields.append((self.recipient['country'],  font_rdetail, 0))
+
+        for field_text, font_obj, base_pad in recip_fields:
+            for i, row in enumerate(wrap_text(field_text, font_obj, RECIP_WRAP_PX)):
+                recip_lines.append((row, font_obj, COLOR_BLACK, base_pad if i == 0 else 2))
+
+        # ── 6. Measure column widths from actual (post-wrap) text ─────────────
+        def col_width(lines_list, min_w: int) -> int:
+            max_w = min_w
+            for text, font, _, _ in lines_list:
+                if not text:
+                    continue
+                bb = draw_m.textbbox((0, 0), text, font=font, anchor='lt')
+                max_w = max(max_w, bb[2] - bb[0])
+            return max_w
+
+        sender_col_w = col_width(sender_lines, 200)
+        recip_col_w  = col_width(recip_lines,  300)
+
+        # ── 7. Tracking code — scaled to fill tape height, rotated for 1D ─────
+        code_img    = None
+        code_col_w  = 0
+        tracking_tw = 0
+        tracking_th = 0
+
+        if self.tracking_number:
+            raw_code = self._generate_tracking_image(write_text=self._barcode_show_text)
+            if raw_code is not None:
+                _bscale = (self._barcode_scale / 100.0) if self._barcode_scale > 0 else 1.0
+                if self._tracking_barcode_type == 'qr':
+                    # QR: scale to ~85% of tape height (adjusted by barcode_scale), square
+                    side = max(int(usable_h * 0.85 * _bscale), 8)
+                    code_img = raw_code.resize((side, side), Image.Resampling.LANCZOS)
+                else:
+                    # 1D barcode: rotate 90° so it runs vertically along the tape
+                    rotated = raw_code.rotate(90, expand=True)
+                    target_h = max(int(usable_h * _bscale), 8)
+                    scale    = target_h / rotated.height
+                    new_w    = max(int(rotated.width * scale), 1)
+                    code_img = rotated.resize((new_w, target_h), Image.Resampling.LANCZOS)
+
+                tb = draw_m.textbbox((0, 0), self.tracking_number, font=font_tracking, anchor='lt')
+                tracking_tw = tb[2] - tb[0]
+                tracking_th = tb[3] - tb[1]
+
+                code_col_w = CODE_GAP + max(code_img.width, tracking_tw)
+
+        # ── 8. Compose canvas ─────────────────────────────────────────────────
+        canvas_w = (ml + sender_col_w + DIVIDER_GAP + 1 + DIVIDER_GAP
+                    + recip_col_w + code_col_w + mr)
+        img  = Image.new('RGB', (canvas_w, canvas_h), 'white')
+        draw = ImageDraw.Draw(img)
+
+        # ── 9. Sender column — vertically centered ────────────────────────────
+        sender_ls_px = max(0, int(sz_sender * (self._sender_line_spacing - 100) / 100))
+        recip_ls_px  = max(0, int(sz_rdetail * (self._recipient_line_spacing - 100) / 100))
+
+        def block_height(lines_list, ls_px=0) -> int:
+            total = 0
+            for text, font, _, extra_top in lines_list:
+                if not text:
+                    continue
+                bb = draw_m.textbbox((0, 0), text or ' ', font=font, anchor='lt')
+                total += extra_top + (bb[3] - bb[1]) + ls_px
+            return total
+
+        sender_block_h = block_height(sender_lines, sender_ls_px)
+        y = mt + max((usable_h - sender_block_h) // 2, 0)
+
+        for text, font, color, extra_top in sender_lines:
+            if not text:
+                continue
+            y += extra_top
+            draw.text((ml, y), text, fill=color, font=font, anchor='lt')
+            bb = draw.textbbox((ml, y), text, font=font, anchor='lt')
+            y += bb[3] - bb[1] + sender_ls_px
+
+        # ── 10. Dashed vertical divider ───────────────────────────────────────
+        div_x = ml + sender_col_w + DIVIDER_GAP
+        _draw_dashed_line(draw, div_x, mt, div_x, canvas_h - mb,
+                          fill=(180, 180, 180), width=2, dash_len=10, gap_len=6)
+
+        # ── 11. Recipient column — top-aligned ────────────────────────────────
+        rx = div_x + 1 + DIVIDER_GAP
+        y  = mt
+        recip_block_y_start = y
+        for text, font, color, extra_top in recip_lines:
+            if not text:
+                continue
+            y += extra_top
+            draw.text((rx, y), text, fill=color, font=font, anchor='lt')
+            bb = draw.textbbox((rx, y), text, font=font, anchor='lt')
+            y += bb[3] - bb[1] + recip_ls_px
+        recip_block_y_end = y
+
+        if self._recipient_border:
+            PAD = max(int(usable_h * 0.03), 6)
+            draw.rectangle(
+                [rx - PAD, recip_block_y_start - PAD,
+                 rx + recip_col_w + PAD, recip_block_y_end + PAD],
+                outline=COLOR_BLACK, width=2,
+            )
+
+        # ── 12. Tracking code — vertically centered in code column ────────────
+        if code_img:
+            code_x = rx + recip_col_w + CODE_GAP
+            code_y = mt + max((usable_h - code_img.height) // 2, 0)
+            img.paste(code_img, (code_x, code_y))
+            # QR codes can't embed text; draw it below the image when requested
+            if self._barcode_show_text and self._tracking_barcode_type == 'qr' and tracking_th:
+                ty = code_y + code_img.height + 6
+                if ty + tracking_th <= canvas_h - mb:
+                    draw.text((code_x, ty), self.tracking_number,
+                              fill=COLOR_BLACK, font=font_tracking, anchor='lt')
+
+        return img
+
+    def _generate_portrait(self) -> Image.Image:
+        """
+        Portrait layout for die-cut labels (fixed width × height).
+        Stacks sender and recipient vertically with a dashed horizontal divider.
+        """
+        ml, mr, mt, mb = self._margin
+        usable_width = max(self._width - ml - mr, 1)
+
+        sfp = self._sender_font_path
+
+        # Scale factor relative to reference size 48 (app default font_size).
+        S_SCALE = (self._sender_font_size / 48.0) if self._sender_font_size > 0 else 1.0
+        R_SCALE = (self._recipient_font_size / 48.0) if self._recipient_font_size > 0 else 1.0
+
+        font_section = self._get_font(max(int(16 * max(S_SCALE, R_SCALE)), 10))
+        font_sender  = self._get_font(max(int(20 * S_SCALE), 10), sfp)
+        font_rname   = self._get_font(max(int(28 * R_SCALE), 12))
+        font_rdetail = self._get_font(max(int(22 * R_SCALE), 10))
+
+        COLOR_GRAY  = (130, 130, 130)
+        COLOR_BLACK = (0, 0, 0)
+        # Scale DIVIDER_H with usable_width so it stays proportional at any DPI
+        DIVIDER_H   = (self._section_spacing if self._section_spacing > 0
+                       else max(int(usable_width * 0.04), 18))
+
+        sender_lines, recip_lines = self._build_line_lists(
+            font_section, font_sender, font_rname, font_rdetail,
+            sender_pad=3, recip_pad=5,
+        )
+
+        dummy  = Image.new('RGB', (usable_width, 20), 'white')
+        draw_m = ImageDraw.Draw(dummy)
+
+        sender_ls_px = max(0, int(font_sender.size * (self._sender_line_spacing - 100) / 100))
+        recip_ls_px  = max(0, int(font_rdetail.size * (self._recipient_line_spacing - 100) / 100))
+
+        def measure_h(lines_list, ls_px=0):
+            total = 0
+            for text, font, _, extra in lines_list:
+                bb = draw_m.textbbox((0, 0), text or " ", font=font, anchor="lt")
+                total += extra + (bb[3] - bb[1]) + ls_px
+            return total
+
+        sender_h = measure_h(sender_lines, sender_ls_px)
+        recip_h  = measure_h(recip_lines, recip_ls_px)
+
+        # ── Tracking code (full-width barcode or QR) ──────────────────────────
+        code_img        = None
+        code_h          = 0
+        tracking_text_h = 0
+        font_tracking   = self._get_font(14)
+
+        if self.tracking_number:
+            raw_code = self._generate_tracking_image(write_text=self._barcode_show_text)
+            if raw_code is not None:
+                _bscale = (self._barcode_scale / 100.0) if self._barcode_scale > 0 else 1.0
+                if self._tracking_barcode_type == 'qr':
+                    # QR: fixed square, ~28% of label width (adjusted by barcode_scale)
+                    side     = max(min(int(usable_width * 0.28 * _bscale), 110), 8)
+                    code_img = raw_code.resize((side, side), Image.Resampling.NEAREST)
+                else:
+                    # 1D barcode: scale to full usable width (adjusted by barcode_scale)
+                    target_w = max(int(usable_width * _bscale), 8)
+                    scale    = target_w / raw_code.width
+                    new_h    = max(int(raw_code.height * scale), 1)
+                    code_img = raw_code.resize((target_w, new_h), Image.Resampling.LANCZOS)
+                code_h = code_img.height
+                tb = draw_m.textbbox((0, 0), self.tracking_number, font=font_tracking, anchor="lt")
+                tracking_text_h = tb[3] - tb[1]
+
+        code_row_h = (code_h + (8 + tracking_text_h if self._tracking_barcode_type != 'qr' else 0) + 14) if code_img else 0
+        if self._tracking_barcode_type == 'qr' and code_img:
+            code_row_h = max(code_img.height, tracking_text_h) + 14
+
+        total_h = mt + sender_h + DIVIDER_H * 2 + 1 + recip_h + code_row_h + mb
+
+        canvas_h = max(self._height, 1) if self._height else max(int(total_h), 1)
+        canvas_w = max(self._width, 1)
+
+        img  = Image.new('RGB', (canvas_w, canvas_h), 'white')
+        draw = ImageDraw.Draw(img)
+
+        y = mt
+
+        def draw_lines(lines_list, ls_px=0):
+            nonlocal y
+            for text, font, color, extra_top in lines_list:
+                if not text:
+                    continue
+                y += extra_top
+                draw.text((ml, y), text, fill=color, font=font, anchor="lt")
+                bb = draw.textbbox((ml, y), text, font=font, anchor="lt")
+                y += bb[3] - bb[1] + ls_px
+
+        draw_lines(sender_lines, sender_ls_px)
+
+        y += DIVIDER_H
+        _draw_dashed_line(draw, ml, y, canvas_w - mr, y,
+                          fill=(170, 170, 170), width=2, dash_len=10, gap_len=6)
+        y += 1 + DIVIDER_H
+
+        recip_y_start = y
+        draw_lines(recip_lines, recip_ls_px)
+        recip_y_end = y
+
+        if self._recipient_border:
+            PAD = max(int(usable_width * 0.02), 4)
+            draw.rectangle(
+                [ml - PAD, recip_y_start - PAD,
+                 canvas_w - mr + PAD, recip_y_end + PAD],
+                outline=COLOR_BLACK, width=2,
+            )
+
+        if code_img:
+            y += 14
+            if self._tracking_barcode_type == 'qr':
+                # QR: paste at left; draw tracking number to the right when requested
+                img.paste(code_img, (ml, y))
+                if self._barcode_show_text and tracking_text_h:
+                    tx = ml + code_img.width + 12
+                    ty = y + max((code_img.height - tracking_text_h) // 2, 0)
+                    if tx + 20 <= canvas_w - mr:
+                        draw.text((tx, ty), self.tracking_number,
+                                  fill=COLOR_BLACK, font=font_tracking, anchor="lt")
+            else:
+                # 1D barcode: full-width; text is embedded in the image via write_text
+                img.paste(code_img, (ml, y))
+
+        return img

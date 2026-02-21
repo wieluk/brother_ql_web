@@ -7,7 +7,7 @@ from PIL import Image
 from werkzeug.datastructures import FileStorage
 from .printer import PrinterQueue, get_ptr_status
 from brother_ql.labels import ALL_LABELS, FormFactor
-from .label import SimpleLabel, LabelContent, LabelOrientation, LabelType
+from .label import SimpleLabel, ShippingLabel, LabelContent, LabelOrientation, LabelType
 from flask import Request, current_app, json, jsonify, render_template, request, make_response
 from werkzeug.utils import secure_filename
 from app.utils import (
@@ -43,7 +43,7 @@ def index():
         default_font_style=FONTS.get_default_font()[1],
         line_spacings=LINE_SPACINGS,
         default_line_spacing=current_app.config['LABEL_DEFAULT_LINE_SPACING'],
-        default_dpi=DEFAULT_DPI,
+        default_dpi=HIGH_RES_DPI,
         default_margin_top=current_app.config['LABEL_DEFAULT_MARGIN_TOP'],
         default_margin_bottom=current_app.config['LABEL_DEFAULT_MARGIN_BOTTOM'],
         default_margin_left=current_app.config['LABEL_DEFAULT_MARGIN_LEFT'],
@@ -339,7 +339,11 @@ def repo_print():
 @bp.route('/api/barcodes', methods=['GET'])
 def get_barcodes():
     barcodes = [code.upper() for code in barcode.PROVIDED_BARCODES]
-    barcodes.insert(0, 'QR')  # Add QR at the top
+    # Pin QR then CODE128 to the front so CODE128 is the default (index 0)
+    for pin in ('QR', 'CODE128'):
+        if pin in barcodes:
+            barcodes.remove(pin)
+        barcodes.insert(0, pin)
     return {'barcodes': barcodes}
 
 
@@ -459,7 +463,7 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
         'border_distanceY': int(d.get('border_distance_y', 0)),
         'border_color': d.get('border_color', 'black'),
         'text': json.loads(d.get('text', '[]')),
-        'barcode_type': d.get('barcode_type', 'QR'),
+        'barcode_type': d.get('barcode_type') or 'QR',
         'qrcode_size': int(d.get('qrcode_size', 10)),
         'qrcode_correction': d.get('qrcode_correction', 'L'),
         'image_mode': d.get('image_mode', "grayscale"),
@@ -516,6 +520,7 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
         label_content = LabelContent.TEXT_ONLY
     elif print_type == 'qrcode':
         label_content = LabelContent.QRCODE_ONLY
+        context['barcode_type'] = 'QR'  # Code button always produces a QR code
     elif print_type == 'qrcode_text':
         label_content = LabelContent.TEXT_QRCODE
     elif image_mode == 'grayscale':
@@ -583,6 +588,62 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
                         image = convert_image_to_bw(pil_img, context['image_bw_threshold'])
             except Exception:
                 current_app.logger.exception('Failed to load repository image')
+
+    if print_type == 'shipping':
+        default_family, default_style = FONTS.get_default_font()
+        default_font_path = FONTS.get_path(f"{default_family},{default_style}")
+        # Line 0 → sender section font; line 1 → recipient section font
+        sender_font_path = context['text'][0].get('path', default_font_path) if context['text'] else default_font_path
+        recipient_font_path = context['text'][1].get('path', sender_font_path) if len(context['text']) > 1 else sender_font_path
+        sender_font_size = int(context['text'][0].get('size', 0)) if context['text'] else 0
+        recipient_font_size = int(context['text'][1].get('size', sender_font_size)) if len(context['text']) > 1 else sender_font_size
+        sender_line_spacing = int(context['text'][0].get('line_spacing', 100)) if context['text'] else 100
+        recipient_line_spacing = int(context['text'][1].get('line_spacing', sender_line_spacing)) if len(context['text']) > 1 else sender_line_spacing
+        # Endless tape: force landscape so the 62 mm dimension becomes the image
+        # height and width grows with content.  This makes fonts large enough to
+        # be readable when printed at 300 dpi.
+        if label_type == LabelType.ENDLESS_LABEL and width > height:
+            label_orientation = LabelOrientation.ROTATED
+            width, height = height, width   # width=0, height=tape_width_px
+        return ShippingLabel(
+            width=width,
+            height=height,
+            label_type=label_type,
+            label_orientation=label_orientation,
+            sender={
+                'name':     d.get('ship_sender_name', '').strip(),
+                'street':   d.get('ship_sender_street', '').strip(),
+                'zip_city': d.get('ship_sender_zip_city', '').strip(),
+                'country':  d.get('ship_sender_country', '').strip(),
+            },
+            recipient={
+                'company':  d.get('ship_recip_company', '').strip(),
+                'name':     d.get('ship_recip_name', '').strip(),
+                'street':   d.get('ship_recip_street', '').strip(),
+                'zip_city': d.get('ship_recip_zip_city', '').strip(),
+                'country':  d.get('ship_recip_country', '').strip(),
+            },
+            tracking_number=d.get('ship_tracking', '').strip(),
+            font_path=recipient_font_path,
+            sender_font_path=sender_font_path,
+            tracking_barcode_type=context['barcode_type'],
+            sender_font_size=sender_font_size,
+            recipient_font_size=recipient_font_size,
+            margin=(
+                int(context['margin_left']),
+                int(context['margin_right']),
+                int(context['margin_top']),
+                int(context['margin_bottom']),
+            ),
+            section_spacing=int(d.get('ship_section_spacing', 0) or 0),
+            barcode_scale=int(d.get('ship_barcode_scale', 0) or 0),
+            barcode_show_text=bool(int(d.get('ship_barcode_show_text', 0) or 0)),
+            from_label=d.get('ship_from_label', '').strip(),
+            to_label=d.get('ship_to_label', '').strip(),
+            recipient_border=bool(int(d.get('ship_recip_border', 0) or 0)),
+            sender_line_spacing=sender_line_spacing,
+            recipient_line_spacing=recipient_line_spacing,
+        )
 
     return SimpleLabel(
         width=width,

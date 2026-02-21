@@ -48,6 +48,11 @@ body.dark-mode {
 	border-color: #444 !important;
 }
 
+.dark-mode .form-control::placeholder {
+	color: #888 !important;
+	opacity: 1 !important;
+}
+
 .dark-mode .input-group-text,
 .dark-mode .dropdown-menu {
 	background-color: #23272b !important;
@@ -163,4 +168,66 @@ body.dark-mode {
 
 .dark-mode .list-group-item {
 	border: 1px solid #444 !important;
+}
+
+/* Navbar in dark mode */
+.dark-mode #mainNavbar {
+	background: linear-gradient(135deg, #111315 0%, #1c1f23 100%) !important;
+	border-bottom-color: #0d6efd !important;
+}
+
+.dark-mode .navbar-printer-select {
+	background-color: rgba(255, 255, 255, 0.06) !important;
+	border-color: rgba(255, 255, 255, 0.15) !important;
+	color: #e8e6e3 !important;
+}
+
+.dark-mode .navbar-printer-select option {
+	background-color: #1c1f23 !important;
+	color: #e8e6e3 !important;
+}
+
+/* Accordion accent border in dark mode */
+.dark-mode .accordion-item:has(> .accordion-collapse.show) {
+	box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.3) !important;
+	border-left-color: #0d6efd !important;
+}
+
+.dark-mode .accordion-button:not(.collapsed) {
+	color: #6ea8fe !important;
+	background-color: rgba(13, 110, 253, 0.12) !important;
+}
+
+/* Card shadows / border in dark mode */
+.dark-mode .card {
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+	border-color: #3a3f45 !important;
+}
+
+.dark-mode .card-header {
+	background-color: rgba(255, 255, 255, 0.04) !important;
+	border-bottom-color: #3a3f45 !important;
+}
+
+/* Preview image */
+.dark-mode #previewImg {
+	border-color: #3a3f45 !important;
+	background: repeating-conic-gradient(#2a2d30 0% 25%, #1e2123 0% 50%) 0 0 / 16px 16px !important;
+}
+
+/* Print type buttons (outline-primary) in dark mode */
+.dark-mode .print-type-group .btn-outline-primary {
+	color: #6ea8fe !important;
+	border-color: #375a7f !important;
+}
+
+.dark-mode .print-type-group .btn-check:checked + .btn-outline-primary {
+	background-color: #0d6efd !important;
+	color: #fff !important;
+	border-color: #0d6efd !important;
+}
+
+/* Shipping fieldset cards */
+.dark-mode #groupShipping .card-header {
+	background-color: rgba(13, 110, 253, 0.1) !important;
 }
