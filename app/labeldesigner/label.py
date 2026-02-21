@@ -624,25 +624,21 @@ class ShippingLabel:
             return ImageFont.load_default()
 
     def generate(self, rotate: bool = False) -> Image.Image:
-        ml, mr, mt, mb = self._margin
-        usable_width = max(self._width - ml - mr, 1)
+        if self._label_type == LabelType.ENDLESS_LABEL:
+            return self._generate_landscape()
+        return self._generate_portrait()
 
-        # Font sizes in pixels at 300 dpi
-        font_section = self._get_font(16)   # "Von:" / "An:" headers (grey)
-        font_sender  = self._get_font(20)   # sender address lines
-        font_rname   = self._get_font(28)   # recipient name (prominent)
-        font_rdetail = self._get_font(22)   # recipient street/city/country
-
+    def _build_line_lists(self, font_section, font_sender, font_rname, font_rdetail,
+                          sender_pad: int, recip_pad: int):
+        """Build (text, font, color, extra_top_padding) tuples for sender and recipient."""
         COLOR_GRAY  = (130, 130, 130)
         COLOR_BLACK = (0, 0, 0)
-        DIVIDER_H   = 10  # spacing above and below the divider line
 
-        # ----- Build line lists: (text, font, color, extra_top_padding) -----
         sender_lines: List[Tuple[str, Any, Tuple, int]] = [
             ("From:", font_section, COLOR_GRAY, 0),
         ]
         if self.sender.get('name'):
-            sender_lines.append((self.sender['name'], font_sender, COLOR_BLACK, 3))
+            sender_lines.append((self.sender['name'], font_sender, COLOR_BLACK, sender_pad))
         if self.sender.get('street'):
             sender_lines.append((self.sender['street'], font_sender, COLOR_BLACK, 0))
         addr_parts = [p for p in [self.sender.get('zip_city'), self.sender.get('country')] if p]
@@ -653,31 +649,166 @@ class ShippingLabel:
             ("To:", font_section, COLOR_GRAY, 0),
         ]
         if self.recipient.get('company'):
-            recip_lines.append((self.recipient['company'], font_rdetail, COLOR_BLACK, 3))
+            recip_lines.append((self.recipient['company'], font_rdetail, COLOR_BLACK, recip_pad))
         if self.recipient.get('name'):
-            recip_lines.append((self.recipient['name'], font_rname, COLOR_BLACK, 5))
+            recip_lines.append((self.recipient['name'], font_rname, COLOR_BLACK, recip_pad))
         if self.recipient.get('street'):
-            recip_lines.append((self.recipient['street'], font_rdetail, COLOR_BLACK, 3))
+            recip_lines.append((self.recipient['street'], font_rdetail, COLOR_BLACK, recip_pad))
         if self.recipient.get('zip_city'):
             recip_lines.append((self.recipient['zip_city'], font_rdetail, COLOR_BLACK, 0))
         if self.recipient.get('country'):
             recip_lines.append((self.recipient['country'], font_rdetail, COLOR_BLACK, 0))
 
-        # ----- Measure heights with a dummy canvas -----
-        dummy = Image.new('RGB', (usable_width, 20), 'white')
+        return sender_lines, recip_lines
+
+    def _generate_landscape(self) -> Image.Image:
+        """
+        Landscape layout for endless tape.  The tape's 62 mm dimension becomes
+        the image HEIGHT; width grows to fit content.  Sender is on the left,
+        recipient on the right, optional QR column at the far right.
+
+        Font sizes are much larger than the portrait fallback so text is
+        actually readable when printed at 300 dpi.
+        """
+        ml, mr, mt, mb = self._margin
+        canvas_h  = max(self._height, 1)
+        usable_h  = max(canvas_h - mt - mb, 1)
+
+        # Fonts sized for 696 px height (62 mm @ 300 dpi)
+        font_section = self._get_font(24)   # "From:" / "To:" headers, gray
+        font_sender  = self._get_font(36)   # sender lines
+        font_rname   = self._get_font(58)   # recipient name — prominent
+        font_rdetail = self._get_font(40)   # recipient company / street / city
+
+        COLOR_GRAY  = (130, 130, 130)
+        COLOR_BLACK = (0, 0, 0)
+        DIVIDER_GAP = 18   # horizontal gap on each side of the vertical divider
+        QR_GAP      = 20   # gap between recipient column and QR column
+
+        sender_lines, recip_lines = self._build_line_lists(
+            font_section, font_sender, font_rname, font_rdetail,
+            sender_pad=4, recip_pad=6,
+        )
+
+        # Measure max text width per column
+        dummy = Image.new('RGB', (8000, canvas_h), 'white')
         draw_m = ImageDraw.Draw(dummy)
 
-        def measure(lines_list):
+        def col_width(lines_list, min_w):
+            max_w = min_w
+            for text, font, _, _ in lines_list:
+                if not text:
+                    continue
+                bb = draw_m.textbbox((0, 0), text, font=font, anchor="lt")
+                max_w = max(max_w, bb[2] - bb[0])
+            return max_w
+
+        sender_col_w = col_width(sender_lines, 160)
+        recip_col_w  = col_width(recip_lines, 240)
+
+        # QR code for tracking number
+        qr_img        = None
+        qr_side       = 0
+        tracking_tw   = 0
+        tracking_th   = 0
+        font_tracking = self._get_font(26)
+        if self.tracking_number:
+            qr = QRCode(
+                version=1,
+                error_correction=constants.ERROR_CORRECT_L,
+                box_size=6,
+                border=1,
+            )
+            qr.add_data(self.tracking_number)
+            qr.make(fit=True)
+            qr_raw  = qr.make_image(fill_color='black', back_color='white').convert('RGB')
+            qr_side = min(usable_h, 200)
+            qr_img  = qr_raw.resize((qr_side, qr_side), Image.Resampling.NEAREST)
+            tb = draw_m.textbbox((0, 0), self.tracking_number, font=font_tracking, anchor="lt")
+            tracking_tw = tb[2] - tb[0]
+            tracking_th = tb[3] - tb[1]
+
+        qr_col_w = (QR_GAP + max(qr_side, tracking_tw)) if qr_img else 0
+
+        # Canvas
+        canvas_w = ml + sender_col_w + DIVIDER_GAP + 1 + DIVIDER_GAP + recip_col_w + qr_col_w + mr
+        img  = Image.new('RGB', (canvas_w, canvas_h), 'white')
+        draw = ImageDraw.Draw(img)
+
+        # --- Sender column (left) ---
+        y = mt
+        for text, font, color, extra_top in sender_lines:
+            if not text:
+                continue
+            y += extra_top
+            draw.text((ml, y), text, fill=color, font=font, anchor="lt")
+            bb = draw.textbbox((ml, y), text, font=font, anchor="lt")
+            y += bb[3] - bb[1]
+
+        # --- Vertical divider ---
+        div_x = ml + sender_col_w + DIVIDER_GAP
+        draw.line([(div_x, mt), (div_x, canvas_h - mb)], fill=(190, 190, 190), width=1)
+
+        # --- Recipient column (right of divider) ---
+        rx = div_x + 1 + DIVIDER_GAP
+        y  = mt
+        for text, font, color, extra_top in recip_lines:
+            if not text:
+                continue
+            y += extra_top
+            draw.text((rx, y), text, fill=color, font=font, anchor="lt")
+            bb = draw.textbbox((rx, y), text, font=font, anchor="lt")
+            y += bb[3] - bb[1]
+
+        # --- QR + tracking (far right) ---
+        if qr_img:
+            qr_x = rx + recip_col_w + QR_GAP
+            qr_y = mt + (usable_h - qr_side - (6 + tracking_th if tracking_th else 0)) // 2
+            qr_y = max(qr_y, mt)
+            img.paste(qr_img, (qr_x, qr_y))
+            if tracking_th:
+                ty = qr_y + qr_side + 6
+                if ty + tracking_th <= canvas_h - mb:
+                    draw.text((qr_x, ty), self.tracking_number,
+                              fill=COLOR_BLACK, font=font_tracking, anchor="lt")
+
+        return img
+
+    def _generate_portrait(self) -> Image.Image:
+        """
+        Portrait layout for die-cut labels (fixed width × height).
+        Stacks sender and recipient vertically with a horizontal divider.
+        """
+        ml, mr, mt, mb = self._margin
+        usable_width = max(self._width - ml - mr, 1)
+
+        font_section = self._get_font(16)
+        font_sender  = self._get_font(20)
+        font_rname   = self._get_font(28)
+        font_rdetail = self._get_font(22)
+
+        COLOR_GRAY  = (130, 130, 130)
+        COLOR_BLACK = (0, 0, 0)
+        DIVIDER_H   = 10
+
+        sender_lines, recip_lines = self._build_line_lists(
+            font_section, font_sender, font_rname, font_rdetail,
+            sender_pad=3, recip_pad=5,
+        )
+
+        dummy  = Image.new('RGB', (usable_width, 20), 'white')
+        draw_m = ImageDraw.Draw(dummy)
+
+        def measure_h(lines_list):
             total = 0
             for text, font, _, extra in lines_list:
                 bb = draw_m.textbbox((0, 0), text or " ", font=font, anchor="lt")
                 total += extra + (bb[3] - bb[1])
             return total
 
-        sender_h = measure(sender_lines)
-        recip_h  = measure(recip_lines)
+        sender_h = measure_h(sender_lines)
+        recip_h  = measure_h(recip_lines)
 
-        # ----- QR code for tracking number -----
         qr_img = None
         qr_side = 0
         tracking_text_h = 0
@@ -690,24 +821,19 @@ class ShippingLabel:
             )
             qr.add_data(self.tracking_number)
             qr.make(fit=True)
-            qr_raw = qr.make_image(fill_color='black', back_color='white').convert('RGB')
+            qr_raw  = qr.make_image(fill_color='black', back_color='white').convert('RGB')
             qr_side = min(int(usable_width * 0.28), 110)
-            qr_img = qr_raw.resize((qr_side, qr_side), Image.Resampling.NEAREST)
+            qr_img  = qr_raw.resize((qr_side, qr_side), Image.Resampling.NEAREST)
             tb = draw_m.textbbox((0, 0), self.tracking_number, font=font_sender, anchor="lt")
             tracking_text_h = tb[3] - tb[1]
 
         qr_row_h = (max(qr_side, tracking_text_h) + 14) if qr_img else 0
+        total_h  = mt + sender_h + DIVIDER_H * 2 + 1 + recip_h + qr_row_h + mb
 
-        # ----- Calculate canvas size -----
-        total_h = mt + sender_h + DIVIDER_H * 2 + 1 + recip_h + qr_row_h + mb
-        if self._label_type == LabelType.ENDLESS_LABEL:
-            canvas_h = max(int(total_h), 1)
-        else:
-            canvas_h = max(self._height, 1)
+        canvas_h = max(self._height, 1) if self._height else max(int(total_h), 1)
         canvas_w = max(self._width, 1)
 
-        # ----- Draw -----
-        img = Image.new('RGB', (canvas_w, canvas_h), 'white')
+        img  = Image.new('RGB', (canvas_w, canvas_h), 'white')
         draw = ImageDraw.Draw(img)
 
         y = mt
@@ -724,19 +850,18 @@ class ShippingLabel:
 
         draw_lines(sender_lines)
 
-        # Divider
         y += DIVIDER_H
         draw.line([(ml, y), (canvas_w - mr, y)], fill=(190, 190, 190), width=1)
         y += 1 + DIVIDER_H
 
         draw_lines(recip_lines)
 
-        # Tracking QR
         if qr_img:
             y += 10
             img.paste(qr_img, (ml, y))
             tx = ml + qr_side + 12
             ty = y + max((qr_side - tracking_text_h) // 2, 0)
-            draw.text((tx, ty), self.tracking_number, fill=COLOR_BLACK, font=font_sender, anchor="lt")
+            draw.text((tx, ty), self.tracking_number,
+                      fill=COLOR_BLACK, font=font_sender, anchor="lt")
 
         return img

@@ -590,6 +590,12 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
         font_path = FONTS.get_path(f"{default_family},{default_style}")
         if context['text']:
             font_path = context['text'][0].get('path', font_path)
+        # Endless tape: force landscape so the 62 mm dimension becomes the image
+        # height and width grows with content.  This makes fonts large enough to
+        # be readable when printed at 300 dpi.
+        if label_type == LabelType.ENDLESS_LABEL and width > height:
+            label_orientation = LabelOrientation.ROTATED
+            width, height = height, width   # width=0, height=tape_width_px
         return ShippingLabel(
             width=width,
             height=height,
