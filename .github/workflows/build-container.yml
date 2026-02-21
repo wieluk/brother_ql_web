@@ -42,11 +42,6 @@ jobs:
           IMAGE="${IMAGE_NAME}"
           TAGS=""
 
-          # Converts git refs to safe docker tags.
-          # - lowercases
-          # - replaces anything not [a-z0-9_.-] with '-'
-          # - trims leading/trailing separators
-          # - collapses multiple '-' (optional)
           sanitize() {
             echo "$1" \
               | tr '[:upper:]' '[:lower:]' \
@@ -54,7 +49,6 @@ jobs:
           }
 
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            # Release tag (v*)
             REF_TAG="${GITHUB_REF_NAME}"
             SAFE_TAG="$(sanitize "$REF_TAG")"
             TAGS="${IMAGE}:${SAFE_TAG}"
@@ -89,13 +83,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Keep only one version per branch-tag by deleting older versions that also have that tag.
-      # (GHCR stores immutable "versions"; retagging creates a new version, the old one still exists
-      # and still lists the tag unless cleaned up.)
       - name: Keep only latest version for this branch tag
         if: steps.meta.outputs.mode == 'branch'
         env:
-          ORG: wieluk
+          OWNER: wieluk
           PACKAGE: brother-ql-web
           TAG: ${{ steps.meta.outputs.branch_tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -105,8 +96,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gh jq
 
-          # Get all versions that have TAG, newest first, keep the first one.
-          IDS=$(gh api "/orgs/${ORG}/packages/container/${PACKAGE}/versions" --paginate \
+          OWNER_TYPE=$(gh api "/users/${OWNER}" --jq '.type' | tr '[:upper:]' '[:lower:]')
+          if [[ "$OWNER_TYPE" == "organization" ]]; then
+            BASE="/orgs/${OWNER}/packages/container/${PACKAGE}"
+          else
+            BASE="/users/${OWNER}/packages/container/${PACKAGE}"
+          fi
+
+          IDS=$(gh api "${BASE}/versions" --paginate \
             | jq -r --arg t "$TAG" '
                 sort_by(.created_at) | reverse
                 | map(select(.metadata.container.tags[]? == $t) | .id) | .[]
@@ -120,7 +117,7 @@ jobs:
             while read -r id; do
               [[ -z "$id" ]] && continue
               echo "Deleting old version id=$id for tag=$TAG"
-              gh api -X DELETE "/orgs/${ORG}/packages/container/${PACKAGE}/versions/${id}"
+              gh api -X DELETE "${BASE}/versions/${id}"
             done <<< "$DELETE"
           else
             echo "No old versions to delete for tag=$TAG"
@@ -148,7 +145,7 @@ jobs:
           }
 
           BRANCH="${{ github.event.ref }}"
-          # Don't delete latest on master deletion scenarios (usually not applicable, but safe)
+
           if [[ "$BRANCH" == "master" ]]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -161,7 +158,7 @@ jobs:
       - name: Delete all package versions that contain this branch tag
         if: steps.meta.outputs.skip != 'true'
         env:
-          ORG: wieluk
+          OWNER: wieluk
           PACKAGE: brother-ql-web
           TAG: ${{ steps.meta.outputs.tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -171,7 +168,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gh jq
 
-          IDS=$(gh api "/orgs/${ORG}/packages/container/${PACKAGE}/versions" --paginate \
+          OWNER_TYPE=$(gh api "/users/${OWNER}" --jq '.type' | tr '[:upper:]' '[:lower:]')
+          if [[ "$OWNER_TYPE" == "organization" ]]; then
+            BASE="/orgs/${OWNER}/packages/container/${PACKAGE}"
+          else
+            BASE="/users/${OWNER}/packages/container/${PACKAGE}"
+          fi
+
+          IDS=$(gh api "${BASE}/versions" --paginate \
             | jq -r --arg t "$TAG" '
                 map(select(.metadata.container.tags[]? == $t) | .id) | .[]
               ')
@@ -184,5 +188,5 @@ jobs:
           while read -r id; do
             [[ -z "$id" ]] && continue
             echo "Deleting version id=$id for deleted branch tag=$TAG"
-            gh api -X DELETE "/orgs/${ORG}/packages/container/${PACKAGE}/versions/${id}"
+            gh api -X DELETE "${BASE}/versions/${id}"
           done <<< "$IDS"
