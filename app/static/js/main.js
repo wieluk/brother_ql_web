@@ -205,7 +205,7 @@ function formData(cut_once = false) {
         margin_left: parseInt($('#margin_left').val(), 10) || 0,
         margin_right: parseInt($('#margin_right').val(), 10) || 0,
         print_type: $('input[name=print_type]:checked').val(),
-        barcode_type: $('#barcode_type').val(),
+        barcode_type: $('#barcode_type').val() || 'QR',
         qrcode_size: parseInt($('#qrcode_size').val(), 10) || 0,
         qrcode_correction: $('#qrcode_correction option:selected').val(),
         image_bw_threshold: parseInt($('#image_bw_threshold').val(), 10) || 0,

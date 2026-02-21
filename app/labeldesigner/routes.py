@@ -459,7 +459,7 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
         'border_distanceY': int(d.get('border_distance_y', 0)),
         'border_color': d.get('border_color', 'black'),
         'text': json.loads(d.get('text', '[]')),
-        'barcode_type': d.get('barcode_type', 'QR'),
+        'barcode_type': d.get('barcode_type') or 'QR',
         'qrcode_size': int(d.get('qrcode_size', 10)),
         'qrcode_correction': d.get('qrcode_correction', 'L'),
         'image_mode': d.get('image_mode', "grayscale"),
@@ -516,6 +516,7 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
         label_content = LabelContent.TEXT_ONLY
     elif print_type == 'qrcode':
         label_content = LabelContent.QRCODE_ONLY
+        context['barcode_type'] = 'QR'  # Code button always produces a QR code
     elif print_type == 'qrcode_text':
         label_content = LabelContent.TEXT_QRCODE
     elif image_mode == 'grayscale':
