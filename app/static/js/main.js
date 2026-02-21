@@ -77,11 +77,10 @@ function _deleteImagesFromDB(id = null) {
         req.onerror = (e) => { db.close(); reject(e.target.error); };
     })).catch(() => null);
 }
-function setFontSettingsPerLine() {
-    var text = $('#label_text').val() || '';
-    var lines = text.split(/\r?\n/);
-    if (lines.length === 0) lines = [''];
+// Virtual line names shown in the line selector when in shipping mode
+const SHIPPING_LINE_NAMES = ['Sender section', 'Recipient section'];
 
+function setFontSettingsPerLine() {
     // Default font settings from the current UI controls
     var currentFont = {
         font: $('#font option:selected').val() || DEFAULT_FONT,
@@ -92,6 +91,16 @@ function setFontSettingsPerLine() {
         line_spacing: $('input[name=line_spacing]:checked').val() || '100',
         color: $('input[name=print_color]:checked').val() || 'black'
     };
+
+    const printType = $('input[name=print_type]:checked').val();
+    if (printType === 'shipping') {
+        _setShippingFontSettings(currentFont);
+        return;
+    }
+
+    var text = $('#label_text').val() || '';
+    var lines = text.split(/\r?\n/);
+    if (lines.length === 0) lines = [''];
 
     // Create lines in the <option> with id #lineSelect
     var lineSelect = $('#lineSelect');
@@ -149,6 +158,38 @@ function setFontSettingsPerLine() {
     for (var i = 0; i < lines.length; i++) {
         fontSettingsPerLine[i]['text'] = lines[i];
     }
+}
+
+function _setShippingFontSettings(currentFont) {
+    var lineSelect = $('#lineSelect');
+    var selectedLine = parseInt(lineSelect.val()) || 0;
+    if (selectedLine >= SHIPPING_LINE_NAMES.length) selectedLine = 0;
+
+    // Populate line selector with shipping section names
+    lineSelect.empty();
+    SHIPPING_LINE_NAMES.forEach(function (name, idx) {
+        lineSelect.append($("<option></option>").attr("value", idx).text(name));
+    });
+    lineSelect.val(selectedLine);
+
+    // In shipping mode, ALWAYS use per-section fonts — ignore the sync checkbox.
+    // "Sender section" and "Recipient section" are always independent.
+    // Ensure we have exactly 2 entries (one per shipping section)
+    while (fontSettingsPerLine.length < SHIPPING_LINE_NAMES.length) {
+        var prev = fontSettingsPerLine.length > 0
+            ? fontSettingsPerLine[fontSettingsPerLine.length - 1]
+            : currentFont;
+        fontSettingsPerLine.push(Object.assign({}, prev));
+    }
+    fontSettingsPerLine = fontSettingsPerLine.slice(0, SHIPPING_LINE_NAMES.length);
+
+    // Update only the active section's font settings
+    fontSettingsPerLine[selectedLine] = Object.assign({}, currentFont);
+
+    // Keep the text as the section name
+    SHIPPING_LINE_NAMES.forEach(function (name, idx) {
+        fontSettingsPerLine[idx]['text'] = name;
+    });
 }
 
 // Update font controls when a line is selected
@@ -241,6 +282,12 @@ function formData(cut_once = false) {
     data['ship_recip_zip_city']  = $('#ship_recip_zip_city').val()  || '';
     data['ship_recip_country']   = $('#ship_recip_country').val()   || '';
     data['ship_tracking']        = $('#ship_tracking').val()        || '';
+    data['ship_section_spacing'] = parseInt($('#ship_section_spacing').val(), 10) || 0;
+    data['ship_barcode_scale']   = parseInt($('#ship_barcode_scale').val(), 10)   || 0;
+    data['ship_barcode_show_text'] = $('#ship_barcode_show_text').is(':checked') ? 1 : 0;
+    data['ship_from_label']      = $('#ship_from_label').val()      || '';
+    data['ship_to_label']        = $('#ship_to_label').val()        || '';
+    data['ship_recip_border']    = $('#ship_recip_border').is(':checked') ? 1 : 0;
 
     // Include selected printer if available
     const printerSelect = document.getElementById('printer');

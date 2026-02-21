@@ -44,7 +44,7 @@
                                 </label>
                             </div>
                                 <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" onchange="preview()" id="high_res" data-default="0">
+                                <input class="form-check-input" type="checkbox" onchange="preview()" id="high_res" data-default="1">
                                 <label class="form-check-label" for="high_res">
                                     High-resolution printing (600 dpi)
                                 </label>
@@ -377,27 +377,46 @@
             <div class="card mt-2">
                 <div class="card-header"><span class="fas fa-arrow-up fa-xs me-1"></span> From / Sender</div>
                 <div class="card-body pb-2">
-                    <input class="form-control mb-2" id="ship_sender_name"     placeholder="Name"            onchange="preview()" oninput="preview()">
-                    <input class="form-control mb-2" id="ship_sender_street"   placeholder="Street + No."    onchange="preview()" oninput="preview()">
-                    <input class="form-control mb-2" id="ship_sender_zip_city" placeholder="ZIP + City"      onchange="preview()" oninput="preview()">
-                    <input class="form-control"      id="ship_sender_country"  placeholder="Country"         onchange="preview()" oninput="preview()">
+                    <input class="form-control form-control-sm mb-2" id="ship_from_label"    data-default="" placeholder='Section header (default "From:")' onchange="preview()" oninput="preview()">
+                    <input class="form-control mb-2" id="ship_sender_name"     data-default="" placeholder="Name"            onchange="preview()" oninput="preview()">
+                    <input class="form-control mb-2" id="ship_sender_street"   data-default="" placeholder="Street + No."    onchange="preview()" oninput="preview()">
+                    <input class="form-control mb-2" id="ship_sender_zip_city" data-default="" placeholder="ZIP + City"      onchange="preview()" oninput="preview()">
+                    <input class="form-control"      id="ship_sender_country"  data-default="" placeholder="Country"         onchange="preview()" oninput="preview()">
                 </div>
             </div>
             <div class="card mt-2">
                 <div class="card-header"><span class="fas fa-arrow-down fa-xs me-1"></span> To / Recipient</div>
                 <div class="card-body pb-2">
-                    <input class="form-control mb-2" id="ship_recip_company"  placeholder="Company (optional)" onchange="preview()" oninput="preview()">
-                    <input class="form-control mb-2" id="ship_recip_name"     placeholder="Name"               onchange="preview()" oninput="preview()">
-                    <input class="form-control mb-2" id="ship_recip_street"   placeholder="Street + No."       onchange="preview()" oninput="preview()">
-                    <input class="form-control mb-2" id="ship_recip_zip_city" placeholder="ZIP + City"         onchange="preview()" oninput="preview()">
-                    <input class="form-control"      id="ship_recip_country"  placeholder="Country"            onchange="preview()" oninput="preview()">
+                    <input class="form-control form-control-sm mb-2" id="ship_to_label"      data-default="" placeholder='Section header (default "To:")'   onchange="preview()" oninput="preview()">
+                    <input class="form-control mb-2" id="ship_recip_company"  data-default="" placeholder="Company (optional)" onchange="preview()" oninput="preview()">
+                    <input class="form-control mb-2" id="ship_recip_name"     data-default="" placeholder="Name"               onchange="preview()" oninput="preview()">
+                    <input class="form-control mb-2" id="ship_recip_street"   data-default="" placeholder="Street + No."       onchange="preview()" oninput="preview()">
+                    <input class="form-control mb-2" id="ship_recip_zip_city" data-default="" placeholder="ZIP + City"         onchange="preview()" oninput="preview()">
+                    <input class="form-control mb-2" id="ship_recip_country"  data-default="" placeholder="Country"            onchange="preview()" oninput="preview()">
+                    <div class="form-check mt-1">
+                        <input class="form-check-input" type="checkbox" id="ship_recip_border" onchange="preview()">
+                        <label class="form-check-label" for="ship_recip_border">Border around recipient</label>
+                    </div>
                 </div>
             </div>
             <div class="card mt-2">
-                <div class="card-header"><span class="fas fa-qrcode fa-xs me-1"></span> Tracking Number <span class="text-muted fw-normal">(optional)</span></div>
+                <div class="card-header"><span class="fas fa-ruler-horizontal fa-xs me-1"></span> Layout</div>
                 <div class="card-body pb-2">
-                    <input class="form-control" id="ship_tracking" placeholder="e.g. 00340434161094050724" onchange="preview()" oninput="preview()">
-                    <div class="form-text text-muted">If provided, a QR code will be printed on the label.</div>
+                    <label class="form-label mb-1" for="ship_section_spacing">Section spacing (px, 0&nbsp;=&nbsp;auto)</label>
+                    <input type="number" class="form-control form-control-sm" id="ship_section_spacing" data-default="0" min="0" max="500" value="0" onchange="preview()" oninput="preview()">
+                </div>
+            </div>
+            <div class="card mt-2">
+                <div class="card-header"><span class="fas fa-barcode fa-xs me-1"></span> Tracking Number <span class="text-muted fw-normal">(optional)</span></div>
+                <div class="card-body pb-2">
+                    <input class="form-control mb-2" id="ship_tracking" data-default="" placeholder="e.g. 00340434161094050724" onchange="preview()" oninput="preview()">
+                    <div class="form-text text-muted mb-2">If provided, a barcode will be printed on the label. Use Code Settings to choose the barcode type.</div>
+                    <label class="form-label mb-1" for="ship_barcode_scale">Barcode scale % (0&nbsp;=&nbsp;auto)</label>
+                    <input type="number" class="form-control form-control-sm mb-2" id="ship_barcode_scale" data-default="0" min="0" max="200" value="0" onchange="preview()" oninput="preview()">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ship_barcode_show_text" onchange="preview()">
+                        <label class="form-check-label" for="ship_barcode_show_text">Show tracking number in barcode image</label>
+                    </div>
                 </div>
             </div>
         </fieldset>

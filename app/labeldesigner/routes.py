@@ -43,7 +43,7 @@ def index():
         default_font_style=FONTS.get_default_font()[1],
         line_spacings=LINE_SPACINGS,
         default_line_spacing=current_app.config['LABEL_DEFAULT_LINE_SPACING'],
-        default_dpi=DEFAULT_DPI,
+        default_dpi=HIGH_RES_DPI,
         default_margin_top=current_app.config['LABEL_DEFAULT_MARGIN_TOP'],
         default_margin_bottom=current_app.config['LABEL_DEFAULT_MARGIN_BOTTOM'],
         default_margin_left=current_app.config['LABEL_DEFAULT_MARGIN_LEFT'],
@@ -339,7 +339,11 @@ def repo_print():
 @bp.route('/api/barcodes', methods=['GET'])
 def get_barcodes():
     barcodes = [code.upper() for code in barcode.PROVIDED_BARCODES]
-    barcodes.insert(0, 'QR')  # Add QR at the top
+    # Pin QR then CODE128 to the front so CODE128 is the default (index 0)
+    for pin in ('QR', 'CODE128'):
+        if pin in barcodes:
+            barcodes.remove(pin)
+        barcodes.insert(0, pin)
     return {'barcodes': barcodes}
 
 
@@ -587,9 +591,14 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
 
     if print_type == 'shipping':
         default_family, default_style = FONTS.get_default_font()
-        font_path = FONTS.get_path(f"{default_family},{default_style}")
-        if context['text']:
-            font_path = context['text'][0].get('path', font_path)
+        default_font_path = FONTS.get_path(f"{default_family},{default_style}")
+        # Line 0 → sender section font; line 1 → recipient section font
+        sender_font_path = context['text'][0].get('path', default_font_path) if context['text'] else default_font_path
+        recipient_font_path = context['text'][1].get('path', sender_font_path) if len(context['text']) > 1 else sender_font_path
+        sender_font_size = int(context['text'][0].get('size', 0)) if context['text'] else 0
+        recipient_font_size = int(context['text'][1].get('size', sender_font_size)) if len(context['text']) > 1 else sender_font_size
+        sender_line_spacing = int(context['text'][0].get('line_spacing', 100)) if context['text'] else 100
+        recipient_line_spacing = int(context['text'][1].get('line_spacing', sender_line_spacing)) if len(context['text']) > 1 else sender_line_spacing
         # Endless tape: force landscape so the 62 mm dimension becomes the image
         # height and width grows with content.  This makes fonts large enough to
         # be readable when printed at 300 dpi.
@@ -615,13 +624,25 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
                 'country':  d.get('ship_recip_country', '').strip(),
             },
             tracking_number=d.get('ship_tracking', '').strip(),
-            font_path=font_path,
+            font_path=recipient_font_path,
+            sender_font_path=sender_font_path,
+            tracking_barcode_type=context['barcode_type'],
+            sender_font_size=sender_font_size,
+            recipient_font_size=recipient_font_size,
             margin=(
                 int(context['margin_left']),
                 int(context['margin_right']),
                 int(context['margin_top']),
                 int(context['margin_bottom']),
             ),
+            section_spacing=int(d.get('ship_section_spacing', 0) or 0),
+            barcode_scale=int(d.get('ship_barcode_scale', 0) or 0),
+            barcode_show_text=bool(int(d.get('ship_barcode_show_text', 0) or 0)),
+            from_label=d.get('ship_from_label', '').strip(),
+            to_label=d.get('ship_to_label', '').strip(),
+            recipient_border=bool(int(d.get('ship_recip_border', 0) or 0)),
+            sender_line_spacing=sender_line_spacing,
+            recipient_line_spacing=recipient_line_spacing,
         )
 
     return SimpleLabel(
