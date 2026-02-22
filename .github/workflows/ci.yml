@@ -11,6 +11,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: run tests
         uses: devcontainers/ci@v0.3
+        env:
+          PRINTER_SIMULATION: "1"
         with:
           runCmd: |
             pytest tests/test_labeldesigner_api.py

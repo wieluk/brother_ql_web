@@ -115,6 +115,22 @@ def reset_printer_cache():
     _cached_scan_log = []
 
 
+def configure_printer_power(device_path: str):
+    """
+    Send Brother ESC/P commands to disable auto power-off and enable auto power-on.
+    These settings are stored in the printer's non-volatile memory and persist across reboots.
+    - \\x1b\\x69\\x55\\x41\\x00\\x00 : Disable auto power-off (stay awake forever)
+    - \\x1b\\x69\\x55\\x70\\x00\\x01 : Enable auto power-on (turn on when USB power is applied)
+    """
+    try:
+        with open(device_path, 'wb') as f:
+            f.write(b'\x1b\x69\x55\x41\x00\x00')  # Disable auto power-off
+            f.write(b'\x1b\x69\x55\x70\x00\x01')  # Enable auto power-on
+        logger.info('Power settings configured for %s: auto-off disabled, auto-on enabled', device_path)
+    except Exception as e:
+        logger.warning('Failed to configure power settings for %s: %s', device_path, e)
+
+
 def get_ptr_status(config: Config):
     # Simple in-memory cache for detected printers
     global _last_scan_ts, _cached_printers, _cached_scan_log
@@ -178,6 +194,7 @@ def get_ptr_status(config: Config):
                         continue
                     spec = f"file://{dev}"
                     log_entry = {'device': spec, 'found': False, 'model': None, 'error': None}
+                    configure_printer_power(dev)
                     try:
                         printer = get_printer(spec)
                         printer_state = get_status(printer)
@@ -261,6 +278,8 @@ def get_ptr_status(config: Config):
             status['scan_log'] = []
             return status
         else:
+            if device_specifier.startswith('file://'):
+                configure_printer_power(device_specifier[7:])
             printer = get_printer(device_specifier)
             printer_state = get_status(printer)
             for key, value in printer_state.items():
