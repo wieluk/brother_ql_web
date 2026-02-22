@@ -1,5 +1,6 @@
 import logging
 import os
+import stat
 import time
 from brother_ql.backends.helpers import send
 from brother_ql import BrotherQLRaster, create_label
@@ -54,9 +55,11 @@ class PrinterQueue:
         self._print_queue.clear()
         try:
             # Simulator: pretend we sent data and return success
-            if isinstance(self.device_specifier, str) and (self.device_specifier in ['simulation', '?']):
+            if isinstance(self.device_specifier, str) and self.device_specifier == 'simulation':
                 logger.info('Simulated sending %d bytes to simulator printer', len(qlr.data))
                 return ""
+            if isinstance(self.device_specifier, str) and self.device_specifier == '?':
+                return "No printer selected — auto-detect found no compatible printer."
 
             network_printer = isinstance(self.device_specifier, str) and self.device_specifier.startswith('tcp://')
             logger.info("Sending data to printer at %s", self.device_specifier)
@@ -102,20 +105,23 @@ def get_printer(printer_identifier=None, backend_identifier=None):
 
 _last_scan_ts = 0
 _cached_printers = []
+_cached_scan_log = []
 
 
 def reset_printer_cache():
-    global _last_scan_ts, _cached_printers
+    global _last_scan_ts, _cached_printers, _cached_scan_log
     _last_scan_ts = 0
     _cached_printers = []
+    _cached_scan_log = []
 
 
 def get_ptr_status(config: Config):
     # Simple in-memory cache for detected printers
-    global _last_scan_ts, _cached_printers
+    global _last_scan_ts, _cached_printers, _cached_scan_log
 
     device_specifier = config['PRINTER_PRINTER']
     default_model = config['PRINTER_MODEL']
+    simulation_enabled = config.get('PRINTER_SIMULATION', False)
 
     SIMULATOR_PRINTER = {
         'errors': [],
@@ -160,49 +166,65 @@ def get_ptr_status(config: Config):
             now = time.time()
             # Refresh cache every 30 seconds (reset to 0 via reset_printer_cache() after power toggle)
             if now - _last_scan_ts > 30:
-                logger.debug('Auto-detecting printers: scanning /dev/usb/lp0..lp10')
+                logger.info('Auto-detecting printers: scanning /dev/usb/lp0..lp10')
                 found_list = []
+                scan_log = []
                 for i in range(0, 11):
                     dev = f"/dev/usb/lp{i}"
                     if not os.path.exists(dev):
                         continue
+                    if not stat.S_ISCHR(os.stat(dev).st_mode):
+                        logger.debug('Skipping %s: not a character device', dev)
+                        continue
                     spec = f"file://{dev}"
+                    log_entry = {'device': spec, 'found': False, 'model': None, 'error': None}
                     try:
                         printer = get_printer(spec)
                         printer_state = get_status(printer)
-                        # Ensure the path is set
                         printer_state.setdefault('path', spec)
                         found_list.append(printer_state)
-                        logger.debug('Found compatible printer at %s -> %s', spec, printer_state.get('model'))
-                    except Exception:
-                        logger.debug('Device %s exists but is not a compatible printer or failed to query', dev, exc_info=True)
+                        log_entry['found'] = True
+                        log_entry['model'] = printer_state.get('model')
+                        logger.info('Found compatible printer at %s -> %s', spec, printer_state.get('model'))
+                    except Exception as e:
+                        log_entry['error'] = str(e)
+                        logger.warning('Device %s exists but failed to query: %s', dev, e, exc_info=True)
+                    scan_log.append(log_entry)
                 _cached_printers = found_list
+                _cached_scan_log = scan_log
                 _last_scan_ts = now
-            # Prepare response: include list of printers and a top-level status for the first one (compatibility)
-            # Ensure simulator printer is always present
-            sim = SIMULATOR_PRINTER.copy()
+
             printers = list(_cached_printers)
-            # append simulator if not present
-            if not any(p.get('path') == 'simulator' for p in printers):
-                printers.append(sim)
+            if simulation_enabled:
+                printers.append(SIMULATOR_PRINTER.copy())
+
             if printers:
-                # Use first detected printer as default top-level status for backward compatibility
                 first = printers[0]
                 for key, value in first.items():
                     status[key] = value
                 return {
                     'printers': printers,
                     'selected': status.get('path'),
+                    'scan_log': list(_cached_scan_log),
                     **status
                 }
             else:
                 status['status_type'] = 'Offline'
                 status['errors'].append('No compatible printer detected')
                 return {
-                    'printers': [sim],
+                    'printers': [SIMULATOR_PRINTER.copy()] if simulation_enabled else [],
                     'selected': None,
+                    'scan_log': list(_cached_scan_log),
                     **status
                 }
+        elif device_specifier == 'simulation':
+            status.update(SIMULATOR_PRINTER)
+            return {
+                'printers': [SIMULATOR_PRINTER.copy()],
+                'selected': 'simulation',
+                'scan_log': [],
+                **status
+            }
         elif device_specifier.startswith('tcp://'):
             # TCP printers are not supported for status queries
             status['status_type'] = 'Unknown'
@@ -210,24 +232,30 @@ def get_ptr_status(config: Config):
             printer['path'] = device_specifier
             printer['phase_type'] = 'Network Printer'
             printer['status_type'] = 'Network Printer'
-            sim = SIMULATOR_PRINTER.copy()
-            status['printers'] = [printer, sim]
+            printers = [printer]
+            if simulation_enabled:
+                printers.append(SIMULATOR_PRINTER.copy())
+            status['printers'] = printers
             status['selected'] = device_specifier
+            status['scan_log'] = []
             return status
         else:
             printer = get_printer(device_specifier)
             printer_state = get_status(printer)
             for key, value in printer_state.items():
                 status[key] = value
-        # Always include simulator in returned printers list
-        sim = SIMULATOR_PRINTER.copy()
-        status['red_support'] = status['model'] in [model.identifier for model in ALL_MODELS if model.two_color]
-        return {
-            'printers': [sim],
-            'selected': status.get('path'),
-            **status
-        }
+            status['red_support'] = status['model'] in [model.identifier for model in ALL_MODELS if model.two_color]
+            printers = [dict(status)]
+            if simulation_enabled:
+                printers.append(SIMULATOR_PRINTER.copy())
+            return {
+                'printers': printers,
+                'selected': status.get('path'),
+                'scan_log': [],
+                **status
+            }
     except Exception as e:
         logger.exception("Printer status error: %s", e)
         status['errors'] = [str(e)]
+        status['scan_log'] = list(_cached_scan_log)
         return status
