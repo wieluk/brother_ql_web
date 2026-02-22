@@ -100,6 +100,12 @@
                         <select id="printer" class="form-select form-select-sm navbar-printer-select" onchange="preview()" style="min-width:220px">
                             <!-- populated dynamically -->
                         </select>
+                        <button id="printerRescanBtn" class="btn btn-outline-secondary btn-sm ms-1" type="button" title="Rescan for printers">
+                            <span id="printerRescanIcon" class="fas fa-sync-alt"></span>
+                        </button>
+                        <button id="printerDebugBtn" class="btn btn-outline-secondary btn-sm ms-1" type="button" title="Printer debug info" data-bs-toggle="modal" data-bs-target="#printerDebugModal">
+                            <span class="fas fa-info-circle"></span>
+                        </button>
                     </li>
                     {% if ha_configured %}
                     <li class="nav-item d-flex align-items-center ms-2">
@@ -125,6 +131,29 @@
         {% block app_content %}{% endblock %}
     </div>
     {%- endblock content %}
+
+    <!-- Printer Debug Modal -->
+    <div class="modal fade" id="printerDebugModal" tabindex="-1" aria-labelledby="printerDebugModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="printerDebugModalLabel"><i class="fas fa-print me-2"></i>Printer Debug Info</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="printerDebugContent">
+                        <p class="text-muted">Click "Rescan" or open this panel after a status update to see details.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="printerDebugRescanBtn">
+                        <span class="fas fa-sync-alt me-1"></span>Rescan Now
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {% block scripts %}
     <script src="{{url_for('static', filename='js/bootstrap.bundle.min.js')}}"></script>

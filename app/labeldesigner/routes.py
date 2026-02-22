@@ -5,7 +5,7 @@ from . import bp
 from app import FONTS
 from PIL import Image
 from werkzeug.datastructures import FileStorage
-from .printer import PrinterQueue, get_ptr_status
+from .printer import PrinterQueue, get_ptr_status, reset_printer_cache
 from brother_ql.labels import ALL_LABELS, FormFactor
 from .label import SimpleLabel, ShippingLabel, LabelContent, LabelOrientation, LabelType
 from flask import Request, current_app, json, jsonify, render_template, request, make_response
@@ -382,6 +382,12 @@ def get_printer_status():
     return get_ptr_status(current_app.config)
 
 
+@bp.route('/api/printer_rescan', methods=['POST'])
+def rescan_printers():
+    reset_printer_cache()
+    return get_ptr_status(current_app.config)
+
+
 @bp.route('/api/print', methods=['POST', 'GET'])
 def print_label():
     """
@@ -436,6 +442,9 @@ def create_printer_from_request(request: Request):
     device = request.values.get('printer') or current_app.config['PRINTER_PRINTER']
     # Allow overriding model via request if provided
     model = request.values.get('model') or current_app.config['PRINTER_MODEL']
+    # When no printer is configured and simulation is enabled, route to simulator
+    if device == '?' and current_app.config.get('PRINTER_SIMULATION', False):
+        device = 'simulation'
     return PrinterQueue(
         model=model,
         device_specifier=device,

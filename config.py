@@ -18,6 +18,7 @@ class Config(object):
 
     PRINTER_MODEL = "QL-500"
     PRINTER_PRINTER = "?"
+    PRINTER_SIMULATION = os.getenv('PRINTER_SIMULATION', '').lower() in ('1', 'true', 'yes')
 
     LABEL_DEFAULT_ORIENTATION = "standard"
     LABEL_DEFAULT_SIZE = "62"
