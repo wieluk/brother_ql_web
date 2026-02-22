@@ -188,7 +188,28 @@ def get_ptr_status(config: Config):
                         logger.info('Found compatible printer at %s -> %s', spec, printer_state.get('model'))
                     except Exception as e:
                         log_entry['error'] = str(e)
-                        logger.warning('Device %s exists but failed to query: %s', dev, e, exc_info=True)
+                        logger.warning('Device %s exists but get_status() failed (%s), adding with unknown status', dev, e)
+                        fallback = {
+                            'errors': [str(e)],
+                            'path': spec,
+                            'media_category': None,
+                            'media_length': 0,
+                            'media_type': None,
+                            'media_width': None,
+                            'model': default_model,
+                            'model_code': None,
+                            'phase_type': 'Unknown',
+                            'series_code': None,
+                            'setting': None,
+                            'status_code': 0,
+                            'status_type': 'Unknown',
+                            'tape_color': '',
+                            'text_color': '',
+                            'red_support': default_model in [m.identifier for m in ALL_MODELS if m.two_color]
+                        }
+                        found_list.append(fallback)
+                        log_entry['found'] = True
+                        log_entry['model'] = default_model
                     scan_log.append(log_entry)
                 _cached_printers = found_list
                 _cached_scan_log = scan_log
