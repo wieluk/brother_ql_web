@@ -442,6 +442,9 @@ def create_printer_from_request(request: Request):
     device = request.values.get('printer') or current_app.config['PRINTER_PRINTER']
     # Allow overriding model via request if provided
     model = request.values.get('model') or current_app.config['PRINTER_MODEL']
+    # When no printer is configured and simulation is enabled, route to simulator
+    if device == '?' and current_app.config.get('PRINTER_SIMULATION', False):
+        device = 'simulation'
     return PrinterQueue(
         model=model,
         device_specifier=device,
