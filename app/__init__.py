@@ -13,13 +13,16 @@ from flask import Flask
 from brother_ql.models import ALL_MODELS
 
 from . import fonts
-from config import Config
+from config import Config, config_by_env
 
 FONTS = None
 
 
-def create_app(config_class=Config) -> Flask:
+def create_app(config_class=None) -> Flask:
     global FONTS
+    if config_class is None:
+        env = os.getenv('FLASK_ENV', 'production')
+        config_class = config_by_env.get(env, Config)
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_class)
     app.config.from_pyfile('application.py', silent=True)

@@ -1,15 +1,10 @@
 {% extends "base.html" %}
 
 {% block app_content %}
-<div class="row">
-    <!-- Settings buttons only (dark mode toggle moved to navbar) -->
-    <div style="position: absolute; top: 10px; right: 20px; z-index: 1000; display: flex; gap: 10px; align-items: center;">
-        <div class="btn-group btn-group-sm" role="group" aria-label="Settings">
-        </div>
-    </div>
+<div class="row mt-2">
     <div class="col-lg-3 col-md-4">
     <fieldset>
-            <div class="accordion" id="accordion" style="max-height: 90vh; overflow-y: auto;">
+            <div class="accordion" id="accordion">
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingLabelSize">
                         <button class="accordion-button collapsed d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#accordionLabelSize" aria-expanded="false" aria-controls="accordionLabelSize">
@@ -21,9 +16,9 @@
                             </span>
                         </button>
                     </h2>
-                    <div id="accordionLabelSize" class="accordion-collapse collapse" aria-labelledby="headingLabelSize" data-bs-parent="#accordion">
+                    <div id="accordionLabelSize" class="accordion-collapse collapse" aria-labelledby="headingLabelSize">
                         <div class="accordion-body">
-                            <label for="label_size" style="margin-bottom: 0">Label Size:</label>
+                            <label for="label_size" class="form-label mb-0">Label Size:</label>
                             <select class="form-control form-select" id="label_size" onChange="preview()" data-default="{{default_label_size}}">
                                 {% for label_size in label_sizes %}<option value="{{label_size[0]}}" data-x="{{label_size[3][0]}}"
                                     data-y="{{label_size[3][1]}}" data-round="{{label_size[2]}}" {% if default_label_size==label_size[0]
@@ -32,7 +27,7 @@
                             <div class="form-text text-muted">Detected label: <span id="label-width">???</span> x <span id="label-height">???</span></div>
                             <div id="labelMismatch" class="form-text text-danger" style="display: none;">Label size mismatch detected!</div>
 
-                            <label for="orientation" class="form-label input-group" style="margin-top: 10px; margin-bottom: 0">Label Orientation:</label>
+                            <label for="orientation" class="form-label input-group mt-2 mb-0">Label Orientation:</label>
                             <div class="btn-group mb-2" role="radiogroup" aria-label="Label Orientation">
                                 <input type="radio" class="btn-check" name="orientation" id="orientation_standard" autocomplete="off" value="standard" onchange="preview()" {% if default_orientation=='standard' %}checked data-default="1"{% endif %}>
                                 <label class="btn btn-secondary" for="orientation_standard">
@@ -60,10 +55,10 @@
                             <span class="fas fa-font" aria-hidden="true"></span> Font Settings
                         </button>
                     </h2>
-                    <div id="accordionFontSettings" class="accordion-collapse collapse show" aria-labelledby="headingFontSettings" data-bs-parent="#accordion">
+                    <div id="accordionFontSettings" class="accordion-collapse collapse show" aria-labelledby="headingFontSettings">
                         <div class="accordion-body">
                             <div id="fontSettingsLineSelector">
-                                <label for="lineSelect" style="margin-bottom: 0">Select Line:</label>
+                                <label for="lineSelect" class="form-label mb-0">Select Line:</label>
                                 <select class="form-control form-select" id="lineSelect">
                                 </select>
                             </div>
@@ -76,7 +71,7 @@
 
                             <div id="fontSettingsContainer">
                                 <div id="fontSetting">
-                                    <label for="font" style="margin-bottom: 0">Font:</label>
+                                    <label for="font" class="form-label mb-0">Font:</label>
                                     <select class="form-control form-select" id="font" onChange="preview()">
                                         {% for font in fonts %}
                                         <optgroup label="{{font.family}}">
@@ -87,12 +82,12 @@
                                         {% endfor %}
                                     </select>
 
-                                    <label for="font_size" style="margin-top: 10px; margin-bottom: 0">Font Size:</label>
+                                    <label for="font_size" class="form-label mt-2 mb-0">Font Size:</label>
                                     <input id="font_size" class="form-control" type="number" min="1" data-default="{{default_font_size}}"
                                         onChange="preview()" required>
 
-                                    <label for="font_align" class="form-label input-group" style="margin-top: 10px; margin-bottom: 0">Font
-                                        Alignment:</label>
+                                    <div id="fontAlignmentGroup">
+                                    <label for="font_align" class="form-label input-group mt-2 mb-0">Font Alignment:</label>
                                     <div class="btn-group" role="radiogroup" aria-label="Font Alignment">
                                         <input type="radio" class="btn-check" name="font_align" id="font_align_left" autocomplete="off" value="left"
                                             onchange="preview()" aria-label="Left Align">
@@ -107,9 +102,10 @@
                                         <label class="btn btn-secondary" for="font_align_right"><span class="fas fa-align-right"
                                                 aria-hidden="true"></span></label>
                                     </div>
+                                    </div>
 
-                                    <label for="line_spacing" class="form-label input-group" style="margin-top: 10px; margin-bottom: 0">Line
-                                        Spacing:</label>
+                                    <div id="lineSpacingGroup">
+                                    <label for="line_spacing" class="form-label input-group mt-2 mb-0">Line Spacing:</label>
                                     <div class="btn-group mb-3" role="radiogroup" aria-label="Line Spacing">
                                         {% for line_spacing in line_spacings %}
                                         <input type="radio" class="btn-check" name="line_spacing" id="line_spacing{{line_spacing}}" autocomplete="off"
@@ -118,6 +114,9 @@
                                         <label class="btn btn-secondary" for="line_spacing{{line_spacing}}">{{line_spacing}}%</label>
                                         {% endfor %}
                                     </div>
+                                    </div>
+
+                                    <div id="additionalFontOptions">
                                     <h6>Additional Font Options:</h6>
                                     <div class="form-check mb-2">
                                         <input class="form-check-input" type="checkbox" onchange="preview()" id="font_inverted" data-default="0">
@@ -132,8 +131,7 @@
                                         </label>
                                     </div>
                                     <div class="red-support">
-                                        <label for="print_color" class="form-label input-group" style="margin-top: 10px; margin-bottom: 0">Print
-                                            Color:</label>
+                                        <label for="print_color" class="form-label input-group mt-2 mb-0">Print Color:</label>
                                         <div class="btn-group">
                                             <label class="btn btn-dark" id="print_color_black">
                                                 <input type="radio" name="print_color" onchange="preview()" value="black" aria-label="Black" data-default="1">Black
@@ -142,6 +140,7 @@
                                                 <input type="radio" name="print_color" onchange="preview()" value="red" aria-label="Red">Red
                                             </label>
                                         </div>
+                                    </div>
                                     </div>
                                 </div>
                             </div>
@@ -157,20 +156,20 @@
                             <span class="fas fa-qrcode" aria-hidden="true"></span> Code Settings
                         </button>
                     </h2>
-                    <div id="accordionCodeSettings" class="accordion-collapse collapse" aria-labelledby="headingCodeSettings" data-bs-parent="#accordion">
+                    <div id="accordionCodeSettings" class="accordion-collapse collapse" aria-labelledby="headingCodeSettings">
                         <div class="accordion-body">
-                            <label for="barcode_type" style="margin-bottom: 0">Barcode Type:</label>
+                            <label for="barcode_type" class="form-label mb-0">Barcode Type:</label>
                             <select class="form-control form-select" id="barcode_type" onChange="preview()"></select>
 
                             <div id="qrCodeSizeContainer">
-                                <label for="qrcode_size" style="margin-top: 10px; margin-bottom: 0">QR Code Size:</label>
+                                <label for="qrcode_size" class="form-label mt-2 mb-0">QR Code Size:</label>
                                 <input id="qrcode_size" class="form-control" type="number" min="1" data-default="{{default_qr_size}}"
                                     onChange="preview()"
                                     required>
                             </div>
 
                             <div id="qrCodeCorrectionContainer">
-                                <label for="qrcode_correction" style="margin-top: 10px; margin-bottom: 0">Error Correction:</label>
+                                <label for="qrcode_correction" class="form-label mt-2 mb-0">Error Correction:</label>
                                 <select class="form-control form-select" id="qrcode_correction" onChange="preview()">
                                     <option value="L">About 7% can be corrected.</option>
                                     <option value="M">About 15% can be corrected.</option>
@@ -178,11 +177,13 @@
                                 <option value="H">About 30% can be corrected.</option>
                             </select>
                         </div>
-                        <label for="code_text" style="margin-top: 10px; margin-bottom: 0">Code Content:</label>
+                        <div id="codeContentGroup">
+                        <label for="code_text" class="form-label mt-2 mb-0">Code Content:</label>
                         <textarea rows="3" id="code_text" class="form-control" onChange="preview()" onInput="preview()"
                             data-default=""></textarea>
                         <div class="form-text text-muted">If filled, this will be used for generating barcodes/QR codes instead of the label
                             text.</div>
+                        </div>
                         <!-- class="accordion-body" -->
                     </div>
                 </div>
@@ -193,9 +194,9 @@
                             <span class="fas fa-image" aria-hidden="true"></span> Image Settings
                         </button>
                     </h2>
-                    <div id="accordionImageSettings" class="accordion-collapse collapse" aria-labelledby="headingImageSettings" data-bs-parent="#accordion">
+                    <div id="accordionImageSettings" class="accordion-collapse collapse" aria-labelledby="headingImageSettings">
                         <div class="accordion-body">
-                            <label for="image_mode" class="form-label input-group" style="margin-top: 10px; margin-bottom: 0">Image mode:</label>
+                            <label for="image_mode" class="form-label input-group mt-2 mb-0">Image mode:</label>
                             <div class="btn-group mb-2" role="radiogroup" aria-label="Image Mode">
                                 <input type="radio" class="btn-check" name="image_mode" id="image_mode_colored" autocomplete="off" value="colored"
                                     onchange="preview()" aria-label="Colored" {% if default_image_mode=='colored' %}checked{% endif %}>
@@ -241,7 +242,7 @@
                                 <div class="form-text">Rotate the image by the specified angle.</div>
                             </div>
 
-                            <label for="image_bw_threshold" style="margin-top: 10px; margin-bottom: 0">Black & White threshold:</label>
+                            <label for="image_bw_threshold" class="form-label mt-2 mb-0">Black & White threshold:</label>
                             <div class="input-group">
                                 <input id="image_bw_threshold" class="form-control" type="number" min="1" max="255"
                                     data-default="{{default_bw_threshold}}" onChange="preview()">
@@ -258,59 +259,62 @@
                             <span class="fas fa-arrows-alt" aria-hidden="true"></span> Margins and Borders
                         </button>
                     </h2>
-                    <div id="accordionMarginsBorders" class="accordion-collapse collapse" aria-labelledby="headingMarginsBorders" data-bs-parent="#accordion">
+                    <div id="accordionMarginsBorders" class="accordion-collapse collapse" aria-labelledby="headingMarginsBorders">
                         <div class="accordion-body">
-                            <label for="margin_top" style="margin-bottom: 0">Margin Top:</label>
+                            <label for="margin_top" class="form-label mb-0">Margin Top:</label>
                             <div class="input-group marginsTopBottom">
                                 <input id="margin_top" class="form-control marginsTopBottom" type="number" min="0" max="200"
                                     data-default="{{default_margin_top}}" onChange="preview()" aria-describedby="marginTop-addon" required>
                                 <span class="input-group-text" id="marginTop-addon">px</span>
                             </div>
-                            <label for="margin_bottom" style="margin-top: 10px; margin-bottom: 0">Margin Bottom:</label>
+                            <label for="margin_bottom" class="form-label mt-2 mb-0">Margin Bottom:</label>
                             <div class="input-group marginsTopBottom">
                                 <input id="margin_bottom" class="form-control marginsTopBottom" type="number" min="0" max="200"
                                     data-default="{{default_margin_bottom}}" onChange="preview()" aria-describedby="marginBottom-addon" required>
                                 <span class="input-group-text" id="marginBottom-addon">px</span>
                             </div>
-                            <label for="margin_left" style="margin-top: 10px; margin-bottom: 0">Margin Left:</label>
+                            <label for="margin_left" class="form-label mt-2 mb-0">Margin Left:</label>
                             <div class="input-group marginsLeftRight">
                                 <input id="margin_left" class="form-control marginsLeftRight" type="number" min="0" max="200"
                                     data-default="{{default_margin_left}}" onChange="preview()" aria-describedby="marginLeft-addon" required>
                                 <span class="input-group-text" id="marginLeft-addon">px</span>
                             </div>
-                            <label for="margin_right" style="margin-top: 10px; margin-bottom: 0">Margin Right:</label>
+                            <label for="margin_right" class="form-label mt-2 mb-0">Margin Right:</label>
                             <div class="input-group marginsLeftRight">
                                 <input id="margin_right" class="form-control marginsLeftRight" type="number" min="0" max="200"
                                     data-default="{{default_margin_right}}" onChange="preview()" aria-describedby="marginRight-addon" required>
                                 <span class="input-group-text" id="marginRight-addon">px</span>
                             </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="sync_margin" data-default="0">
+                                <label class="form-check-label" for="sync_margin">Use same margin for all sides</label>
+                            </div>
 
-                            <hr style="margin: 1.2em 0;" />
+                            <hr class="my-3" />
 
-                            <label for="border_thickness" style="margin-bottom: 0">Border Thickness (0 = disabled):</label>
+                            <label for="border_thickness" class="form-label mb-0">Border Thickness (0 = disabled):</label>
                             <div class="input-group">
                                 <input id="border_thickness" class="form-control" type="number" min="0" data-default="0" onChange="preview()" />
-                                <span class="input-group-text" id="marginBottom-addon">px</span>
+                                <span class="input-group-text">px</span>
                             </div>
-                            <label for="border_roundness" style="margin-bottom: 0">Border Roundness:</label>
+                            <label for="border_roundness" class="form-label mb-0">Border Roundness:</label>
                             <div class="input-group">
                                 <input id="border_roundness" class="form-control" type="number" min="0" data-default="0" onChange="preview()" />
-                                <span class="input-group-text" id="marginBottom-addon">px</span>
+                                <span class="input-group-text">px</span>
                             </div>
-                            <label for="border_distance_x" style="margin-bottom: 0">Border Distance (left/right):</label>
+                            <label for="border_distance_x" class="form-label mb-0">Border Distance (left/right):</label>
                             <div class="input-group">
                                 <input id="border_distance_x" class="form-control" type="number" min="0" data-default="0" onChange="preview()" />
-                                <span class="input-group-text" id="marginBottom-addon">px</span>
+                                <span class="input-group-text">px</span>
                             </div>
-                            <label for="border_distance_y" style="margin-bottom: 0">Border Distance (top/bottom):</label>
+                            <label for="border_distance_y" class="form-label mb-0">Border Distance (top/bottom):</label>
                             <div class="input-group">
                                 <input id="border_distance_y" class="form-control" type="number" min="0" data-default="0" onChange="preview()" />
-                                <span class="input-group-text" id="marginBottom-addon">px</span>
+                                <span class="input-group-text">px</span>
                             </div>
 
                             <div class="red-support">
-                                <label for="border_color" class="form-label input-group" style="margin-top: 10px; margin-bottom: 0">Print
-                                    Color:</label>
+                                <label for="border_color" class="form-label input-group mt-2 mb-0">Print Color:</label>
                                 <div class="btn-group">
                                     <label class="btn btn-dark" id="border_color_black">
                                         <input type="radio" name="border_color" onchange="preview()" value="black" aria-label="Black" data-default="1">Black
@@ -331,9 +335,9 @@
                             <span class="fas fa-wrench" aria-hidden="true"></span> Advanced Settings
                         </button>
                     </h2>
-                    <div id="accordionAdvancedSettings" class="accordion-collapse collapse" aria-labelledby="headingAdvancedSettings" data-bs-parent="#accordion">
+                    <div id="accordionAdvancedSettings" class="accordion-collapse collapse" aria-labelledby="headingAdvancedSettings">
                         <div class="accordion-body">
-                            <label for="log_level" style="margin-bottom: 0">Log Level:</label>
+                            <label for="log_level" class="form-label mb-0">Log Level:</label>
                             <select class="form-control form-select mb-3" id="log_level" onChange="preview()">
                                 <option value="CRITICAL">CRITICAL</option>
                                 <option value="ERROR">ERROR</option>
@@ -349,7 +353,7 @@
         </fieldset>
     </div>
     <div class="col-lg-5 col-md-4">
-        <label for="print_type" class="form-label input-group" style="margin-bottom: 0">Print Type:</label>
+        <label for="print_type" class="form-label input-group mb-0">Print Type:</label>
         <div class="btn-group print-type-group" role="radiogroup" aria-label="Print Type">
             <input type="radio" class="btn-check" name="print_type" id="printTypeText" autocomplete="off" value="text"
                 onchange="preview()" aria-label="Text" data-default="1" {% if default_print_type=='text' %}checked{% endif %}>
@@ -369,7 +373,7 @@
         </div>
 
         <fieldset id="groupLabelImage">
-            <label style="margin-top: 10px; margin-bottom: 0">Label Image:</label>
+            <label class="form-label mt-2 mb-0">Label Image:</label>
             <form class="dropzone" id="image-dropzone">
             </form>
         </fieldset>
@@ -394,7 +398,7 @@
                     <input class="form-control mb-2" id="ship_recip_zip_city" data-default="" placeholder="ZIP + City"         onchange="preview()" oninput="preview()">
                     <input class="form-control mb-2" id="ship_recip_country"  data-default="" placeholder="Country"            onchange="preview()" oninput="preview()">
                     <div class="form-check mt-1">
-                        <input class="form-check-input" type="checkbox" id="ship_recip_border" onchange="preview()">
+                        <input class="form-check-input" type="checkbox" id="ship_recip_border" onchange="if(this.checked && (parseInt($('#border_thickness').val()) || 0) === 0){ $('#border_thickness').val(2); } preview();">
                         <label class="form-check-label" for="ship_recip_border">Border around recipient</label>
                     </div>
                 </div>
@@ -422,22 +426,22 @@
         </fieldset>
 
         <fieldset id="groupLabelText">
-            <label for="label_text" style="margin-top: 10px; margin-bottom: 0">Label Text:</label>
+            <label for="label_text" class="form-label mt-2 mb-0">Label Text:</label>
             <textarea rows="7" id="label_text" class="form-control" onChange="preview()" onInput="preview()"
                 data-default=""></textarea>
             <!-- Template info box -->
-            <div class="card mt-2" style="font-size: 0.95em;">
-                <div class="card-header p-2" style="cursor: pointer; user-select: none;" data-bs-toggle="collapse"
+            <div class="card mt-2 template-info-card">
+                <div class="card-header p-2 template-info-card" data-bs-toggle="collapse"
                     data-bs-target="#templateInfoBox" aria-expanded="false" aria-controls="templateInfoBox">
                     <span class="fas fa-info-circle" aria-hidden="true"></span>
-                    <span style="margin-left: 0.5em;">About label templates <span
+                    <span class="ms-2">About label templates <span
                             class="fas fa-chevron-down float-end"></span></span>
                 </div>
                 <div id="templateInfoBox" class="collapse">
                     <div class="card-body pt-2 pb-2">
                         <strong>Templates</strong> allow you to insert dynamic content into your label text. Supported
                         templates:<br>
-                        <ul style="margin-bottom: 0.5em;">
+                        <ul class="mb-2">
                             <li><code>{{'{{datetime:<format>}}'}}</code> — Inserts the current date and time when printing.
                                 You can customize the format using <a href="https://strftime.org/" target="_blank"
                                     rel="noopener">strftime</a> options, e.g., <code>%H:%M:%S %d.%m.%Y</code>.</li>
@@ -458,12 +462,12 @@
     </div>
     <div class="col-lg-4 col-md-4">
     <fieldset>
-        <label for="previewImg" style="margin-bottom: 0">Label Preview:</label><br />
-        <img id="previewImg" style="max-height: 350px; width: auto; max-width: 100%; display: block; margin-bottom: 1em;" />
+        <label for="previewImg" class="form-label mb-0">Label Preview:</label><br />
+        <img id="previewImg" />
         <p>Printed size: <span id="labelWidth">?</span> cm x <span id="labelHeight">?</span> cm</p>
 
         <div>
-            <label for="print_count" style="margin-top: 10px; margin-bottom: 0">Print Count:</label>
+            <label for="print_count" class="form-label mt-2 mb-0">Print Count:</label>
             <input id="print_count" class="form-control" type="number" min="1" max="100" data-default="1" required>
         </div>
 
@@ -472,10 +476,10 @@
                 <button type="button" id="printButton" class="btn btn-primary btn-lg w-75" onClick="print()">
                     <span class="fas fa-print" aria-hidden="true"></span> Print
                 </button>
-                <button type="button" class="btn btn-primary btn-lg dropdown-toggle dropdown-toggle-split" style="width: 25px; min-width: 0;" id="dropdownPrintButton" data-bs-toggle="dropdown" aria-expanded="false">
+                <button type="button" class="btn btn-primary btn-lg dropdown-toggle dropdown-toggle-split" id="dropdownPrintButton" data-bs-toggle="dropdown" aria-expanded="false">
                     <span class="visually-hidden">Toggle Dropdown</span>
                 </button>
-                <ul class="dropdown-menu" aria-labelledby="dropdownPrintButton" style="min-width: 100px; width: max-content;">
+                <ul class="dropdown-menu print-options-menu" aria-labelledby="dropdownPrintButton">
                     <li><a class="dropdown-item" href="#" onClick="print(true)">Cut only once</a></li>
                 </ul>
             </div>
@@ -483,7 +487,7 @@
     </fieldset>
     <div class="card">
         <div class="card-header">
-            <span class="fas fa-terminal" aria-hidden="true" style="margin-right: 0.3em"></span> Status
+            <span class="fas fa-terminal me-1" aria-hidden="true"></span> Status
             <span id="statusIcon" class="float-end fas fa-exclamation-triangle" aria-hidden="true"></span>
         </div>
         <div id="printerStatusPanel" class="card-body" style="display: none;">

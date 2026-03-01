@@ -1,0 +1,494 @@
+/* ===================================================================
+   app.css — unified stylesheet for brother_ql_web
+   Light/dark theming via CSS custom properties and [data-theme="dark"]
+   =================================================================== */
+
+/* -------------------------------------------------------------------
+   1. Design tokens (light theme)
+   ------------------------------------------------------------------- */
+:root {
+  --app-bg:           #f4f6f9;
+  --card-bg:          #ffffff;
+  --card-border:      #dee2e6;
+  --card-shadow:      0 1px 4px rgba(0, 0, 0, 0.08);
+  --card-shadow-hover:0 4px 16px rgba(0, 0, 0, 0.13);
+
+  --accent:           #2563eb;
+  --accent-hover:     #1d4ed8;
+
+  --text-primary:     #1e293b;
+  --text-muted:       #64748b;
+
+  --input-bg:         #ffffff;
+  --input-border:     #cbd5e1;
+  --input-color:      #1e293b;
+
+  --navbar-bg-start:  #1e3a5f;
+  --navbar-bg-end:    #1a2e4a;
+
+  --accordion-btn-bg: #f8fafc;
+  --accordion-btn-active-bg: #e8f0fe;
+  --accordion-btn-active-color: var(--accent);
+
+  --preview-checker-light: #e2e8f0;
+  --preview-checker-dark:  #cbd5e1;
+
+  --status-info-bg:   #dbeafe;
+  --status-info-color:#1e40af;
+  --status-ok-bg:     #dcfce7;
+  --status-ok-color:  #15803d;
+  --status-warn-bg:   #fef9c3;
+  --status-warn-color:#854d0e;
+  --status-err-bg:    #fee2e2;
+  --status-err-color: #b91c1c;
+
+  --dropdown-bg:      #ffffff;
+  --dropdown-border:  #dee2e6;
+  --dropdown-item-hover: #f1f5f9;
+
+  --modal-bg:         #ffffff;
+  --modal-header-bg:  #f8fafc;
+
+  --dz-bg:            #f8fafc;
+  --dz-border:        #94a3b8;
+  --dz-hover-bg:      #eff6ff;
+  --dz-hover-border:  var(--accent);
+}
+
+/* -------------------------------------------------------------------
+   2. Dark theme overrides
+   ------------------------------------------------------------------- */
+[data-theme="dark"] {
+  --app-bg:           #0f172a;
+  --card-bg:          #1e293b;
+  --card-border:      #334155;
+  --card-shadow:      0 1px 6px rgba(0, 0, 0, 0.4);
+  --card-shadow-hover:0 4px 20px rgba(0, 0, 0, 0.6);
+
+  --text-primary:     #e2e8f0;
+  --text-muted:       #94a3b8;
+
+  --input-bg:         #0f172a;
+  --input-border:     #475569;
+  --input-color:      #e2e8f0;
+
+  --accordion-btn-bg: #1e293b;
+  --accordion-btn-active-bg: #1e3a5f;
+  --accordion-btn-active-color: #93c5fd;
+
+  --preview-checker-light: #1e293b;
+  --preview-checker-dark:  #334155;
+
+  --status-info-bg:   #1e3a5f;
+  --status-info-color:#93c5fd;
+  --status-ok-bg:     #14532d;
+  --status-ok-color:  #86efac;
+  --status-warn-bg:   #451a03;
+  --status-warn-color:#fcd34d;
+  --status-err-bg:    #450a0a;
+  --status-err-color: #fca5a5;
+
+  --dropdown-bg:      #1e293b;
+  --dropdown-border:  #334155;
+  --dropdown-item-hover: #0f172a;
+
+  --modal-bg:         #1e293b;
+  --modal-header-bg:  #0f172a;
+
+  --dz-bg:            #1e293b;
+  --dz-border:        #475569;
+  --dz-hover-bg:      #1e3a5f;
+  --dz-hover-border:  #93c5fd;
+}
+
+/* -------------------------------------------------------------------
+   3. Base
+   ------------------------------------------------------------------- */
+body {
+  background-color: var(--app-bg);
+  color: var(--text-primary);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* -------------------------------------------------------------------
+   4. Navbar
+   ------------------------------------------------------------------- */
+#mainNavbar {
+  background: linear-gradient(90deg, var(--navbar-bg-start) 0%, var(--navbar-bg-end) 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  padding: 0.5rem 1rem;
+}
+
+.navbar-printer-select {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.navbar-printer-select option {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+.navbar-printer-select:focus {
+  background-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+/* -------------------------------------------------------------------
+   5. Cards
+   ------------------------------------------------------------------- */
+.card {
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.15s;
+}
+.card:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+.card-header {
+  background-color: var(--modal-header-bg);
+  border-bottom-color: var(--card-border);
+  color: var(--text-primary);
+}
+
+/* -------------------------------------------------------------------
+   6. Accordion
+   ------------------------------------------------------------------- */
+.accordion-button {
+  background-color: var(--accordion-btn-bg);
+  color: var(--text-primary);
+}
+.accordion-button:not(.collapsed) {
+  background-color: var(--accordion-btn-active-bg);
+  color: var(--accordion-btn-active-color);
+  box-shadow: none;
+}
+.accordion-button::after {
+  filter: none;
+}
+[data-theme="dark"] .accordion-button::after {
+  filter: invert(1);
+}
+.accordion-item {
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+}
+.accordion-body {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+/* Scrollable sidebar accordion */
+#accordion {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* -------------------------------------------------------------------
+   7. Form controls
+   ------------------------------------------------------------------- */
+.form-control,
+.form-select {
+  background-color: var(--input-bg);
+  border-color: var(--input-border);
+  color: var(--input-color);
+}
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--input-bg);
+  border-color: var(--accent);
+  color: var(--input-color);
+  box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+}
+.form-control::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+.form-check-input {
+  background-color: var(--input-bg);
+  border-color: var(--input-border);
+}
+.form-check-input:checked {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+.input-group-text {
+  background-color: var(--accordion-btn-bg);
+  border-color: var(--input-border);
+  color: var(--text-muted);
+}
+label,
+.form-label {
+  color: var(--text-primary);
+}
+.form-text {
+  color: var(--text-muted);
+}
+
+/* -------------------------------------------------------------------
+   8. Buttons — btn-secondary needs help in dark mode
+   ------------------------------------------------------------------- */
+[data-theme="dark"] .btn-secondary {
+  background-color: #334155;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+[data-theme="dark"] .btn-secondary:hover {
+  background-color: #475569;
+}
+[data-theme="dark"] .btn-check + .btn-secondary {
+  background-color: #334155;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+[data-theme="dark"] .btn-check:checked + .btn-secondary {
+  background-color: #1e3a5f;
+  border-color: #93c5fd;
+  color: #93c5fd;
+}
+
+/* -------------------------------------------------------------------
+   9. Print-type radio group
+   ------------------------------------------------------------------- */
+.print-type-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 0.75rem;
+}
+.print-type-group .btn {
+  flex: 1 1 80px;
+  min-width: 70px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* -------------------------------------------------------------------
+   10. Preview panel
+   ------------------------------------------------------------------- */
+#previewImg {
+  max-height: 350px;
+  width: auto;
+  max-width: 100%;
+  display: block;
+  margin-bottom: 1em;
+  border-radius: 4px;
+  background-image:
+    linear-gradient(45deg, var(--preview-checker-light) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--preview-checker-light) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--preview-checker-light) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--preview-checker-light) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-color: var(--preview-checker-dark);
+}
+.roundPreviewImage {
+  border-radius: 50%;
+}
+
+/* -------------------------------------------------------------------
+   11. Status alerts
+   ------------------------------------------------------------------- */
+#statusBox.alert-info,
+#printerStatusBox.alert-info {
+  background-color: var(--status-info-bg);
+  color: var(--status-info-color);
+  border-color: transparent;
+}
+#statusBox.alert-success,
+#printerStatusBox.alert-success {
+  background-color: var(--status-ok-bg);
+  color: var(--status-ok-color);
+  border-color: transparent;
+}
+#statusBox.alert-warning,
+#printerStatusBox.alert-warning {
+  background-color: var(--status-warn-bg);
+  color: var(--status-warn-color);
+  border-color: transparent;
+}
+#statusBox.alert-secondary,
+#printerStatusBox.alert-secondary {
+  background-color: var(--card-bg);
+  color: var(--text-muted);
+  border-color: var(--card-border);
+}
+
+/* -------------------------------------------------------------------
+   12. Dropdowns
+   ------------------------------------------------------------------- */
+.dropdown-menu {
+  background-color: var(--dropdown-bg);
+  border-color: var(--dropdown-border);
+}
+.dropdown-item {
+  color: var(--text-primary);
+}
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: var(--dropdown-item-hover);
+  color: var(--text-primary);
+}
+
+/* -------------------------------------------------------------------
+   13. Modals
+   ------------------------------------------------------------------- */
+.modal-content {
+  background-color: var(--modal-bg);
+  border-color: var(--card-border);
+}
+.modal-header {
+  background-color: var(--modal-header-bg);
+  border-bottom-color: var(--card-border);
+  color: var(--text-primary);
+}
+.modal-footer {
+  border-top-color: var(--card-border);
+}
+[data-theme="dark"] .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* -------------------------------------------------------------------
+   14. Repository thumbnails
+   ------------------------------------------------------------------- */
+.repo-thumb {
+  width: 60px;
+  height: 24px;
+  object-fit: contain;
+  border: 1px solid var(--card-border);
+  border-radius: 3px;
+  background: var(--preview-checker-dark);
+}
+.list-group-item {
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .list-group-item-success {
+  background-color: #14532d;
+  color: #86efac;
+}
+[data-theme="dark"] .list-group-item-danger {
+  background-color: #450a0a;
+  color: #fca5a5;
+}
+
+/* -------------------------------------------------------------------
+   15. Dropzone
+   ------------------------------------------------------------------- */
+.dropzone {
+  background: var(--dz-bg) !important;
+  border: 2px dashed var(--dz-border) !important;
+  border-radius: 6px !important;
+  color: var(--text-muted) !important;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dropzone:hover,
+.dropzone.dz-drag-hover {
+  background: var(--dz-hover-bg) !important;
+  border-color: var(--dz-hover-border) !important;
+}
+.dropzone .dz-preview .dz-image {
+  border-radius: 4px;
+}
+[data-theme="dark"] .dropzone .dz-preview .dz-filename span,
+[data-theme="dark"] .dropzone .dz-preview .dz-size {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .dropzone .dz-remove {
+  color: var(--status-err-color);
+}
+
+/* -------------------------------------------------------------------
+   16. Dark mode icon toggle
+   ------------------------------------------------------------------- */
+#darkModeToggle {
+  cursor: pointer;
+  font-size: 1.4em;
+  color: rgba(255, 255, 255, 0.8);
+  transition: color 0.2s;
+}
+#darkModeToggle:hover {
+  color: #fff;
+}
+
+/* -------------------------------------------------------------------
+   17. Misc / utilities
+   ------------------------------------------------------------------- */
+hr {
+  border-color: var(--card-border);
+  opacity: 0.5;
+}
+code {
+  background-color: var(--accordion-btn-bg);
+  color: var(--accent);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+[data-theme="dark"] .text-muted {
+  color: var(--text-muted) !important;
+}
+[data-theme="dark"] .badge.bg-secondary {
+  background-color: #334155 !important;
+}
+
+/* -------------------------------------------------------------------
+   18. Print button split / dropdown sizing
+   ------------------------------------------------------------------- */
+#dropdownPrintButton {
+  width: 2rem;
+  min-width: 0;
+}
+.print-options-menu {
+  min-width: 100px;
+  width: max-content;
+}
+
+/* -------------------------------------------------------------------
+   19. Template info collapsible card
+   ------------------------------------------------------------------- */
+.template-info-card {
+  font-size: 0.95em;
+}
+.template-info-card .card-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* -------------------------------------------------------------------
+   21. Disabled accordion sections and sub-groups
+   ------------------------------------------------------------------- */
+.accordion-item.section-disabled .accordion-button {
+  opacity: 0.38;
+  pointer-events: none;
+  cursor: default;
+}
+.accordion-item.section-disabled .accordion-body {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.controls-disabled {
+  opacity: 0.38;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* -------------------------------------------------------------------
+   20. Responsive tweaks
+   ------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  #accordion {
+    max-height: none;
+  }
+  .print-type-group .btn {
+    flex: 1 1 60px;
+    font-size: 0.72rem;
+  }
+  .navbar-printer-select {
+    min-width: 140px !important;
+  }
+}

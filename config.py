@@ -44,3 +44,21 @@ class Config(object):
     HOMEASSISTANT_API_URL = os.getenv("HOMEASSISTANT_API_URL", "")
     HOMEASSISTANT_API_KEY = os.getenv("HOMEASSISTANT_API_KEY", "")
     HOMEASSISTANT_PRINTER_ENTITY_ID = os.getenv("HOMEASSISTANT_PRINTER_ENTITY_ID", "")
+
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+    LOG_LEVEL = logging.DEBUG
+
+
+class TestingConfig(Config):
+    TESTING = True
+    PRINTER_SIMULATION = True
+
+
+# Map FLASK_ENV values to config classes
+config_by_env = {
+    'development': DevelopmentConfig,
+    'testing': TestingConfig,
+    'production': Config,
+}
