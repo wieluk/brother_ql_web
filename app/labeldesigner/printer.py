@@ -298,7 +298,12 @@ def get_ptr_status(config: Config):
             return status
         else:
             if device_specifier.startswith('file://'):
-                configure_printer_power(device_specifier[7:])
+                dev_path = device_specifier[7:]
+                if not os.path.exists(dev_path):
+                    raise FileNotFoundError(f"Printer device not found: {dev_path}")
+                if not stat.S_ISCHR(os.stat(dev_path).st_mode):
+                    raise OSError(f"Path is not a character device: {dev_path}")
+                configure_printer_power(dev_path)
             printer = get_printer(device_specifier)
             printer_state = get_status(printer)
             for key, value in printer_state.items():
