@@ -121,6 +121,9 @@ def configure_printer_power(device_path: str):
     These settings are stored in the printer's non-volatile memory and persist across reboots.
     - \\x1b\\x69\\x55\\x41\\x00\\x00 : Disable auto power-off (stay awake forever)
     - \\x1b\\x69\\x55\\x70\\x00\\x01 : Enable auto power-on (turn on when USB power is applied)
+
+    After writing, the printer sends ACK bytes back. We drain those from the read
+    buffer so they don't contaminate the subsequent get_status() call.
     """
     try:
         with open(device_path, 'wb') as f:
@@ -129,6 +132,22 @@ def configure_printer_power(device_path: str):
         logger.info('Power settings configured for %s: auto-off disabled, auto-on enabled', device_path)
     except Exception as e:
         logger.warning('Failed to configure power settings for %s: %s', device_path, e)
+        return
+
+    # Give the printer time to send back any ACK bytes, then drain them so they
+    # don't contaminate the upcoming get_status() read.
+    time.sleep(0.1)
+    try:
+        fd = os.open(device_path, os.O_RDONLY | os.O_NONBLOCK)
+        try:
+            stale = os.read(fd, 256)
+            logger.debug('Drained %d stale byte(s) from %s: %s', len(stale), device_path, stale.hex())
+        except BlockingIOError:
+            pass  # Nothing pending — that's fine
+        finally:
+            os.close(fd)
+    except Exception as e:
+        logger.debug('Buffer drain skipped for %s: %s', device_path, e)
 
 
 def get_ptr_status(config: Config):
