@@ -18,6 +18,12 @@ var printer_status = {
 // Form data collection
 // ---------------------------------------------------------------------------
 
+function getEffectivePrintType() {
+    var pt = $('input[name=print_type]:checked').val() || $('input[name=print_type][data-default="1"]').val() || 'text';
+    if (pt === 'qrcode' && $('#code_display_text').is(':checked')) return 'qrcode_text';
+    return pt;
+}
+
 function formData(cut_once = false) {
     var data = {
         text: JSON.stringify(fontSettingsPerLine),
@@ -27,7 +33,7 @@ function formData(cut_once = false) {
         margin_bottom: parseInt($('#margin_bottom').val(), 10) || 0,
         margin_left: parseInt($('#margin_left').val(), 10) || 0,
         margin_right: parseInt($('#margin_right').val(), 10) || 0,
-        print_type: $('input[name=print_type]:checked').val(),
+        print_type: getEffectivePrintType(),
         barcode_type: $('#barcode_type').val() || 'QR',
         qrcode_size: parseInt($('#qrcode_size').val(), 10) || 0,
         qrcode_correction: $('#qrcode_correction option:selected').val(),
@@ -164,7 +170,10 @@ function gen_label(isPreview = true, cut_once = false) {
         }
     }
 
-    const printType = $('input[name=print_type]:checked').val();
+    const rawPrintType = $('input[name=print_type]:checked').val();
+    $('#codeDisplayTextOption').toggle(rawPrintType === 'qrcode');
+
+    const printType = getEffectivePrintType();
     if (printType === 'image') {
         $('#groupLabelImage').show();
     } else {

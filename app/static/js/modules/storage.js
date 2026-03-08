@@ -135,6 +135,11 @@ function restoreAllSettingsFromLocalStorage() {
     if (!raw) return;
     let data;
     try { data = JSON.parse(raw); } catch { return; }
+    // Migrate removed 'qrcode_text' print_type to 'qrcode' + display text checkbox
+    if (data['print_type'] === 'qrcode_text') {
+        data['print_type'] = 'qrcode';
+        data['code_display_text'] = true;
+    }
     current_restoring = true;
     $('input, select, textarea').each(function () {
         const key = this.type === 'radio' && this.name.length > 0 ? this.name : this.id;

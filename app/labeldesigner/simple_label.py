@@ -334,7 +334,9 @@ class SimpleLabel:
         else:
             value = self.text[0].get('text', '') if self.text and self.text[0].get('text', '') else ''
         my_barcode = barcode_generator(value, writer=ImageWriter())
-        return my_barcode.render()
+        # In TEXT_QRCODE mode _draw_text renders the text; suppress the library's built-in text overlay to avoid duplicates
+        write_text = self._label_content != LabelContent.TEXT_QRCODE
+        return my_barcode.render({'write_text': write_text})
 
     def _generate_qr(self):
         qr = QRCode(

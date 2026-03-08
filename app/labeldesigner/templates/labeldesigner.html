@@ -187,6 +187,7 @@
                         <!-- class="accordion-body" -->
                     </div>
                 </div>
+                </div>
 
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingImageSettings">
@@ -359,17 +360,22 @@
                 onchange="preview()" aria-label="Text" data-default="1" {% if default_print_type=='text' %}checked{% endif %}>
             <label class="btn btn-outline-primary" for="printTypeText"><span class="fas fa-font fa-lg" aria-hidden="true"></span><br>Text</label>
             <input type="radio" class="btn-check" name="print_type" id="printTypeQrCode" autocomplete="off" value="qrcode"
-                onchange="preview()" aria-label="Code" {% if default_print_type=='qrcode' %}checked{% endif %}>
+                onchange="preview()" aria-label="Code" {% if default_print_type=='qrcode' or default_print_type=='qrcode_text' %}checked{% endif %}>
             <label class="btn btn-outline-primary" for="printTypeQrCode"><span class="fas fa-qrcode fa-lg" aria-hidden="true"></span><br>Code</label>
-            <input type="radio" class="btn-check" name="print_type" id="printTypeQrCodeText" autocomplete="off" value="qrcode_text"
-                onchange="preview()" aria-label="Code+Text" {% if default_print_type=='qrcode_text' %}checked{% endif %}>
-            <label class="btn btn-outline-primary" for="printTypeQrCodeText"><span class="fas fa-barcode fa-lg" aria-hidden="true"></span><br>Code+Text</label>
             <input type="radio" class="btn-check" name="print_type" id="printTypeImage" autocomplete="off" value="image"
                 onchange="preview()" aria-label="Image" {% if default_print_type=='image' %}checked{% endif %}>
             <label class="btn btn-outline-primary" for="printTypeImage"><span class="fas fa-image fa-lg" aria-hidden="true"></span><br>Image</label>
             <input type="radio" class="btn-check" name="print_type" id="printTypeShipping" autocomplete="off" value="shipping"
                 onchange="preview()" aria-label="Shipping" {% if default_print_type=='shipping' %}checked{% endif %}>
             <label class="btn btn-outline-primary" for="printTypeShipping"><span class="fas fa-truck fa-lg" aria-hidden="true"></span><br>Shipping</label>
+        </div>
+        <div id="codeDisplayTextOption" class="mt-2" style="display:none;">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" onchange="preview()" id="code_display_text" {% if default_print_type=='qrcode_text' %}checked data-default="1"{% else %}data-default="0"{% endif %}>
+                <label class="form-check-label" for="code_display_text">
+                    Display text on label
+                </label>
+            </div>
         </div>
 
         <fieldset id="groupLabelImage">

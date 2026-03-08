@@ -160,7 +160,6 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
         label_content = LabelContent.TEXT_ONLY
     elif print_type == 'qrcode':
         label_content = LabelContent.QRCODE_ONLY
-        context['barcode_type'] = 'QR'
     elif print_type == 'qrcode_text':
         label_content = LabelContent.TEXT_QRCODE
     elif image_mode == 'grayscale':

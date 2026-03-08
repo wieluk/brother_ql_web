@@ -5,7 +5,6 @@
     },
     "forwardPorts": [8013],
     "postCreateCommand": "pip install -r requirements.txt",
-    //"remoteUser": "vscode",
     "customizations": {
         "vscode": {
             "settings": {
@@ -27,7 +26,6 @@
     "runArgs": [
         "-e",
         "TZ=Europe/Berlin",
-        "-e",
         "PRINTER_MODEL=QL-800",
         "-v /dev/usb",
         "--privileged"
