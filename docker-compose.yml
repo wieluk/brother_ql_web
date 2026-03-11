@@ -15,9 +15,8 @@ services:
       - HOMEASSISTANT_API_URL=http://homeassistant.local:8123/api
       - HOMEASSISTANT_API_KEY=your_long_lived_access_token
       - HOMEASSISTANT_PRINTER_ENTITY_ID=switch.label_printer_plug
-    #privileged: true
-    devices:
-      - "/dev/usb/lp0:/dev/usb/lp0"
+    privileged: true
     volumes:
+      - /dev/usb:/dev/usb
       - ./labels:/app/labels
       - /etc/timezone:/etc/timezone:ro
