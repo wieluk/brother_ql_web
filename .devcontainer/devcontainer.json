@@ -28,6 +28,7 @@
         "-e", "TZ=Europe/Berlin",
         "-e", "PRINTER_MODEL=QL-800",
         "-v", "/dev/usb:/dev/usb",
-        "--privileged"
+        "--privileged",
+        "--network=host"
         ]
 }
