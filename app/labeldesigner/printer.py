@@ -12,6 +12,12 @@ from brother_ql.models import ALL_MODELS
 
 logger = logging.getLogger(__name__)
 
+# Experimentally identified MAC address prefixes for Brother network printers
+# (may not be exhaustive)
+BROTHER_MAC_ADDRESS_PREFIXES = [
+    "ac:f2:3c",  # Brother QL-810W
+]
+
 
 class PrinterQueue:
     def __init__(self, model, device_specifier, label_size):

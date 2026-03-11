@@ -20,3 +20,4 @@ services:
       - /dev/usb:/dev/usb
       - ./labels:/app/labels
       - /etc/timezone:/etc/timezone:ro
+    #network_mode: host # needed for network printer scanning
