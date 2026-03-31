@@ -87,6 +87,12 @@
                     </li>
                     {% endif %}
                     <li class="nav-item d-flex align-items-center ms-2">
+                        <button id="settingsBtn" class="btn btn-outline-light btn-sm" type="button"
+                                data-bs-toggle="modal" data-bs-target="#settingsModal" title="Settings">
+                            <span class="fas fa-cog"></span>
+                        </button>
+                    </li>
+                    <li class="nav-item d-flex align-items-center ms-2">
                         <div id="darkModeToggle" title="Toggle dark mode">
                             <span id="darkModeIcon"></span>
                         </div>
@@ -101,6 +107,24 @@
         {% block app_content %}{% endblock %}
     </div>
     {%- endblock content %}
+
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="settingsModalLabel"><i class="fas fa-cog me-2"></i>Settings</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% block settings_content %}{% endblock %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Printer Debug Modal -->
     <div class="modal fade" id="printerDebugModal" tabindex="-1" aria-labelledby="printerDebugModalLabel" aria-hidden="true">

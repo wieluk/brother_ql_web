@@ -135,10 +135,13 @@ function restoreAllSettingsFromLocalStorage() {
     if (!raw) return;
     let data;
     try { data = JSON.parse(raw); } catch { return; }
-    // Migrate removed 'qrcode_text' print_type to 'qrcode' + display text checkbox
+    // Migrate old 'qrcode_text' print_type to 'qrcode' + code_show_text checkbox
     if (data['print_type'] === 'qrcode_text') {
         data['print_type'] = 'qrcode';
-        data['code_display_text'] = true;
+        data['code_show_text'] = true;
+        if (data['label_text'] && !data['code_label_text']) {
+            data['code_label_text'] = data['label_text'];
+        }
     }
     current_restoring = true;
     $('input, select, textarea').each(function () {

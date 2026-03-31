@@ -151,45 +151,6 @@
                 </div>
 
                 <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingCodeSettings">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#accordionCodeSettings" aria-expanded="false" aria-controls="accordionCodeSettings">
-                            <span class="fas fa-qrcode" aria-hidden="true"></span> Code Settings
-                        </button>
-                    </h2>
-                    <div id="accordionCodeSettings" class="accordion-collapse collapse" aria-labelledby="headingCodeSettings">
-                        <div class="accordion-body">
-                            <label for="barcode_type" class="form-label mb-0">Barcode Type:</label>
-                            <select class="form-control form-select" id="barcode_type" onChange="preview()"></select>
-
-                            <div id="qrCodeSizeContainer">
-                                <label for="qrcode_size" class="form-label mt-2 mb-0">QR Code Size:</label>
-                                <input id="qrcode_size" class="form-control" type="number" min="1" data-default="{{default_qr_size}}"
-                                    onChange="preview()"
-                                    required>
-                            </div>
-
-                            <div id="qrCodeCorrectionContainer">
-                                <label for="qrcode_correction" class="form-label mt-2 mb-0">Error Correction:</label>
-                                <select class="form-control form-select" id="qrcode_correction" onChange="preview()">
-                                    <option value="L">About 7% can be corrected.</option>
-                                    <option value="M">About 15% can be corrected.</option>
-                                    <option value="Q">About 25% can be corrected.</option>
-                                <option value="H">About 30% can be corrected.</option>
-                            </select>
-                        </div>
-                        <div id="codeContentGroup">
-                        <label for="code_text" class="form-label mt-2 mb-0">Code Content:</label>
-                        <textarea rows="3" id="code_text" class="form-control" onChange="preview()" onInput="preview()"
-                            data-default=""></textarea>
-                        <div class="form-text text-muted">If filled, this will be used for generating barcodes/QR codes instead of the label
-                            text.</div>
-                        </div>
-                        <!-- class="accordion-body" -->
-                    </div>
-                </div>
-                </div>
-
-                <div class="accordion-item">
                     <h2 class="accordion-header" id="headingImageSettings">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#accordionImageSettings" aria-expanded="false" aria-controls="accordionImageSettings">
                             <span class="fas fa-image" aria-hidden="true"></span> Image Settings
@@ -330,26 +291,6 @@
                     </div>
                 </div>
 
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingAdvancedSettings">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#accordionAdvancedSettings" aria-expanded="false" aria-controls="accordionAdvancedSettings">
-                            <span class="fas fa-wrench" aria-hidden="true"></span> Advanced Settings
-                        </button>
-                    </h2>
-                    <div id="accordionAdvancedSettings" class="accordion-collapse collapse" aria-labelledby="headingAdvancedSettings">
-                        <div class="accordion-body">
-                            <label for="log_level" class="form-label mb-0">Log Level:</label>
-                            <select class="form-control form-select mb-3" id="log_level" onChange="preview()">
-                                <option value="CRITICAL">CRITICAL</option>
-                                <option value="ERROR">ERROR</option>
-                                <option value="WARNING" selected>WARNING</option>
-                                <option value="INFO">INFO</option>
-                                <option value="DEBUG">DEBUG</option>
-                            </select>
-                        </div>
-                        <!-- class="accordion-body" -->
-                    </div>
-                </div>
             </div>
         </fieldset>
     </div>
@@ -369,19 +310,15 @@
                 onchange="preview()" aria-label="Shipping" {% if default_print_type=='shipping' %}checked{% endif %}>
             <label class="btn btn-outline-primary" for="printTypeShipping"><span class="fas fa-truck fa-lg" aria-hidden="true"></span><br>Shipping</label>
         </div>
-        <div id="codeDisplayTextOption" class="mt-2" style="display:none;">
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" onchange="preview()" id="code_display_text" {% if default_print_type=='qrcode_text' %}checked data-default="1"{% else %}data-default="0"{% endif %}>
-                <label class="form-check-label" for="code_display_text">
-                    Display text on label
-                </label>
-            </div>
-        </div>
-
+        <hr class="mt-3 mb-2">
         <fieldset id="groupLabelImage">
             <label class="form-label mt-2 mb-0">Label Image:</label>
             <form class="dropzone" id="image-dropzone">
             </form>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" onchange="preview()" id="image_text_overlay" data-default="0">
+                <label class="form-check-label" for="image_text_overlay">Add text overlay</label>
+            </div>
         </fieldset>
         <fieldset id="groupShipping" style="display:none">
             <div class="card mt-2">
@@ -471,6 +408,43 @@
                 </div>
             </div>
         </fieldset>
+
+        <fieldset id="groupImageOverlayText" style="display:none">
+            <label for="image_overlay_text" class="form-label mt-2 mb-0">Text Overlay:</label>
+            <textarea rows="4" id="image_overlay_text" class="form-control" onChange="preview()" onInput="preview()"
+                data-default=""></textarea>
+        </fieldset>
+
+        <fieldset id="groupCodeContent" style="display:none">
+            <label for="barcode_type" class="form-label mt-2 mb-0">Barcode Type:</label>
+            <select class="form-control form-select" id="barcode_type" onChange="preview()"></select>
+            <div id="qrCodeSizeContainer">
+                <label for="qrcode_size" class="form-label mt-2 mb-0">QR Code Size:</label>
+                <input id="qrcode_size" class="form-control" type="number" min="1" data-default="{{default_qr_size}}" onChange="preview()" required>
+            </div>
+            <div id="qrCodeCorrectionContainer">
+                <label for="qrcode_correction" class="form-label mt-2 mb-0">Error Correction:</label>
+                <select class="form-control form-select" id="qrcode_correction" onChange="preview()">
+                    <option value="L">About 7% can be corrected.</option>
+                    <option value="M">About 15% can be corrected.</option>
+                    <option value="Q">About 25% can be corrected.</option>
+                    <option value="H">About 30% can be corrected.</option>
+                </select>
+            </div>
+            <label for="code_text" class="form-label mt-2 mb-0">QR / Barcode Content:</label>
+            <textarea rows="4" id="code_text" class="form-control" onChange="preview()" onInput="preview()"
+                data-default=""></textarea>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="code_show_text" onchange="preview()" data-default="0"
+                    {% if default_print_type=='qrcode_text' %}checked{% endif %}>
+                <label class="form-check-label" for="code_show_text">Add text to label</label>
+            </div>
+            <div id="groupCodeLabelText" style="display:none">
+                <label for="code_label_text" class="form-label mt-2 mb-0">Label Text:</label>
+                <textarea rows="3" id="code_label_text" class="form-control" onChange="preview()" onInput="preview()"
+                    data-default=""></textarea>
+            </div>
+        </fieldset>
     </div>
     <div class="col-lg-4 col-md-4">
     <fieldset>
@@ -550,4 +524,18 @@ const url_for_repo_preview = '{{ url_for('.repo_preview') }}';
 const url_for_repo_print = '{{ url_for('.repo_print') }}';
 
 {{ super() }}
+{% endblock %}
+
+{% block settings_content %}
+<div class="mb-3">
+    <label for="log_level" class="form-label">Log Level:</label>
+    <select class="form-select" id="log_level" onChange="preview()">
+        <option value="CRITICAL">CRITICAL</option>
+        <option value="ERROR">ERROR</option>
+        <option value="WARNING" selected>WARNING</option>
+        <option value="INFO">INFO</option>
+        <option value="DEBUG">DEBUG</option>
+    </select>
+    <div class="form-text text-muted">Controls verbosity of server-side logging during label generation.</div>
+</div>
 {% endblock %}

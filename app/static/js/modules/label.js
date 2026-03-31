@@ -20,26 +20,26 @@ var printer_status = {
 
 function getEffectivePrintType() {
     var pt = $('input[name=print_type]:checked').val() || $('input[name=print_type][data-default="1"]').val() || 'text';
-    if (pt === 'qrcode' && $('#code_display_text').is(':checked')) return 'qrcode_text';
+    if (pt === 'qrcode' && $('#code_show_text').is(':checked')) return 'qrcode_text';
     return pt;
 }
 
 function formData(cut_once = false) {
+    const printType = getEffectivePrintType();
+    const wantsText     = printType === 'text' || printType === 'qrcode_text' || printType === 'shipping'
+                          || (printType === 'image' && $('#image_text_overlay').is(':checked'));
+    const wantsCode     = printType === 'qrcode' || printType === 'qrcode_text' || printType === 'shipping';
+    const wantsImage    = printType === 'image';
+    const wantsShipping = printType === 'shipping';
+
     var data = {
-        text: JSON.stringify(fontSettingsPerLine),
         label_size: $('#label_size').val(),
         orientation: $('input[name=orientation]:checked').val(),
         margin_top: parseInt($('#margin_top').val(), 10) || 0,
         margin_bottom: parseInt($('#margin_bottom').val(), 10) || 0,
         margin_left: parseInt($('#margin_left').val(), 10) || 0,
         margin_right: parseInt($('#margin_right').val(), 10) || 0,
-        print_type: getEffectivePrintType(),
-        barcode_type: $('#barcode_type').val() || 'QR',
-        qrcode_size: parseInt($('#qrcode_size').val(), 10) || 0,
-        qrcode_correction: $('#qrcode_correction option:selected').val(),
-        image_bw_threshold: parseInt($('#image_bw_threshold').val(), 10) || 0,
-        image_mode: $('input[name=image_mode]:checked').val(),
-        image_fit: $('#image_fit').is(':checked') ? 1 : 0,
+        print_type: printType,
         print_count: parseInt($('#print_count').val(), 10) || 0,
         log_level: $('#log_level').val(),
         cut_once: cut_once ? 1 : 0,
@@ -48,8 +48,6 @@ function formData(cut_once = false) {
         border_distance_x: parseInt($('#border_distance_x').val(), 10) || 0,
         border_distance_y: parseInt($('#border_distance_y').val(), 10) || 0,
         high_res: $('#high_res').is(':checked') ? 1 : 0,
-        image_scaling_factor: parseInt($('#image_scaling_factor').val(), 10) || 0,
-        image_rotation: parseInt($('#image_rotation').val(), 10) || 0,
         sync_font_settings: $('#sync_font_settings').is(':checked') ? 1 : 0
     };
 
@@ -57,24 +55,44 @@ function formData(cut_once = false) {
         data['print_color'] = $('input[name=print_color]:checked').val();
         data['border_color'] = $('input[name=border_color]:checked').val();
     }
-    data['code_text'] = $('#code_text').val() || '';
 
-    data['ship_sender_name']      = $('#ship_sender_name').val()      || '';
-    data['ship_sender_street']    = $('#ship_sender_street').val()    || '';
-    data['ship_sender_zip_city']  = $('#ship_sender_zip_city').val()  || '';
-    data['ship_sender_country']   = $('#ship_sender_country').val()   || '';
-    data['ship_recip_company']    = $('#ship_recip_company').val()    || '';
-    data['ship_recip_name']       = $('#ship_recip_name').val()       || '';
-    data['ship_recip_street']     = $('#ship_recip_street').val()     || '';
-    data['ship_recip_zip_city']   = $('#ship_recip_zip_city').val()   || '';
-    data['ship_recip_country']    = $('#ship_recip_country').val()    || '';
-    data['ship_tracking']         = $('#ship_tracking').val()         || '';
-    data['ship_section_spacing']  = parseInt($('#ship_section_spacing').val(), 10)  || 0;
-    data['ship_barcode_scale']    = parseInt($('#ship_barcode_scale').val(), 10)    || 0;
-    data['ship_barcode_show_text']= $('#ship_barcode_show_text').is(':checked') ? 1 : 0;
-    data['ship_from_label']       = $('#ship_from_label').val()       || '';
-    data['ship_to_label']         = $('#ship_to_label').val()         || '';
-    data['ship_recip_border']     = $('#ship_recip_border').is(':checked') ? 1 : 0;
+    if (wantsText) {
+        data['text'] = JSON.stringify(fontSettingsPerLine);
+    }
+
+    if (wantsCode) {
+        data['barcode_type'] = $('#barcode_type').val() || 'QR';
+        data['qrcode_size']  = parseInt($('#qrcode_size').val(), 10) || 0;
+        data['qrcode_correction'] = $('#qrcode_correction option:selected').val();
+        data['code_text'] = $('#code_text').val() || '';
+    }
+
+    if (wantsImage) {
+        data['image_mode']           = $('input[name=image_mode]:checked').val();
+        data['image_bw_threshold']   = parseInt($('#image_bw_threshold').val(), 10) || 0;
+        data['image_fit']            = $('#image_fit').is(':checked') ? 1 : 0;
+        data['image_scaling_factor'] = parseInt($('#image_scaling_factor').val(), 10) || 0;
+        data['image_rotation']       = parseInt($('#image_rotation').val(), 10) || 0;
+    }
+
+    if (wantsShipping) {
+        data['ship_sender_name']      = $('#ship_sender_name').val()      || '';
+        data['ship_sender_street']    = $('#ship_sender_street').val()    || '';
+        data['ship_sender_zip_city']  = $('#ship_sender_zip_city').val()  || '';
+        data['ship_sender_country']   = $('#ship_sender_country').val()   || '';
+        data['ship_recip_company']    = $('#ship_recip_company').val()    || '';
+        data['ship_recip_name']       = $('#ship_recip_name').val()       || '';
+        data['ship_recip_street']     = $('#ship_recip_street').val()     || '';
+        data['ship_recip_zip_city']   = $('#ship_recip_zip_city').val()   || '';
+        data['ship_recip_country']    = $('#ship_recip_country').val()    || '';
+        data['ship_tracking']         = $('#ship_tracking').val()         || '';
+        data['ship_section_spacing']  = parseInt($('#ship_section_spacing').val(), 10)  || 0;
+        data['ship_barcode_scale']    = parseInt($('#ship_barcode_scale').val(), 10)    || 0;
+        data['ship_barcode_show_text']= $('#ship_barcode_show_text').is(':checked') ? 1 : 0;
+        data['ship_from_label']       = $('#ship_from_label').val()       || '';
+        data['ship_to_label']         = $('#ship_to_label').val()         || '';
+        data['ship_recip_border']     = $('#ship_recip_border').is(':checked') ? 1 : 0;
+    }
 
     const printerSelect = document.getElementById('printer');
     if (printerSelect && printerSelect.value) {
@@ -118,38 +136,43 @@ function updatePreview(data) {
 // ---------------------------------------------------------------------------
 
 function updateAccordionAvailability(printType) {
+    const imageOverlay = printType === 'image' && $('#image_text_overlay').is(':checked');
+
     // Full-section disable rules
     const sectionRules = {
-        accordionFontSettings:  printType === 'qrcode' || printType === 'image',
-        accordionCodeSettings:  printType === 'text'   || printType === 'image',
+        accordionFontSettings:  printType === 'qrcode' || (printType === 'image' && !imageOverlay),
         accordionImageSettings: printType !== 'image',
     };
-    for (const [id, disabled] of Object.entries(sectionRules)) {
+    for (const [id, hidden] of Object.entries(sectionRules)) {
         const el = document.getElementById(id);
         if (!el) continue;
         const item = el.closest('.accordion-item');
         if (!item) continue;
-        item.classList.toggle('section-disabled', disabled);
-        if (disabled && el.classList.contains('show')) {
+        item.style.display = hidden ? 'none' : '';
+        if (hidden && el.classList.contains('show')) {
             (bootstrap.Collapse.getInstance(el) ||
              new bootstrap.Collapse(el, { toggle: false })).hide();
         }
     }
     // Shipping-specific sub-group restrictions
     const shippingMode = printType === 'shipping';
-    ['fontAlignmentGroup', 'additionalFontOptions', 'codeContentGroup'].forEach(function (id) {
+    ['fontAlignmentGroup', 'additionalFontOptions'].forEach(function (id) {
         const el = document.getElementById(id);
         if (el) el.classList.toggle('controls-disabled', shippingMode);
     });
 
     // Auto-open the primary section for the current print type
-    const primarySection = {
-        text:         'accordionFontSettings',
-        qrcode:       'accordionCodeSettings',
-        qrcode_text:  'accordionFontSettings',
-        image:        'accordionImageSettings',
-        shipping:     'accordionFontSettings',
-    }[printType];
+    let primarySection;
+    if (printType === 'image') {
+        primarySection = imageOverlay ? 'accordionFontSettings' : 'accordionImageSettings';
+    } else {
+        primarySection = {
+            text:        'accordionFontSettings',
+            qrcode:      null,
+            qrcode_text: 'accordionFontSettings',
+            shipping:    'accordionFontSettings',
+        }[printType];
+    }
     if (primarySection) {
         const openEl = document.getElementById(primarySection);
         if (openEl && !openEl.classList.contains('show')) {
@@ -170,26 +193,15 @@ function gen_label(isPreview = true, cut_once = false) {
         }
     }
 
-    const rawPrintType = $('input[name=print_type]:checked').val();
-    $('#codeDisplayTextOption').toggle(rawPrintType === 'qrcode');
-
     const printType = getEffectivePrintType();
-    if (printType === 'image') {
-        $('#groupLabelImage').show();
-    } else {
-        $('#groupLabelImage').hide();
-    }
-    if (printType === 'shipping') {
-        $('#groupShipping').show();
-        $('#groupLabelText').hide();
-    } else {
-        $('#groupShipping').hide();
-        if (printType !== 'image') {
-            $('#groupLabelText').show();
-        } else {
-            $('#groupLabelText').hide();
-        }
-    }
+    const imageOverlay = printType === 'image' && $('#image_text_overlay').is(':checked');
+
+    $('#groupLabelImage').toggle(printType === 'image');
+    $('#groupImageOverlayText').toggle(imageOverlay);
+    $('#groupShipping').toggle(printType === 'shipping');
+    $('#groupLabelText').toggle(printType === 'text');
+    $('#groupCodeContent').toggle(printType === 'qrcode' || printType === 'qrcode_text');
+    $('#groupCodeLabelText').toggle(printType === 'qrcode_text');
 
     updateAccordionAvailability(printType);
 

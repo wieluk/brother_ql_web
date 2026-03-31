@@ -28,7 +28,12 @@ function setFontSettingsPerLine() {
         return;
     }
 
-    var text = $('#label_text').val() || '';
+    const imageOverlay = printType === 'image' && $('#image_text_overlay').is(':checked');
+    const codeWithText = printType === 'qrcode' && $('#code_show_text').is(':checked');
+    var text;
+    if (imageOverlay)      text = $('#image_overlay_text').val() || '';
+    else if (codeWithText) text = $('#code_label_text').val() || '';
+    else                   text = $('#label_text').val() || '';
     var lines = text.split(/\r?\n/);
     if (lines.length === 0) lines = [''];
 
@@ -132,7 +137,7 @@ $(document).ready(function () {
     });
 
     // Sync line selector with textarea caret position
-    $('#label_text').on('click keyup', function () {
+    $('#label_text, #image_overlay_text, #code_label_text').on('click keyup', function () {
         var textarea = this;
         var caret = textarea.selectionStart;
         var lines = textarea.value.split(/\r?\n/);
