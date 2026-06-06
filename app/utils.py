@@ -47,6 +47,14 @@ def pdffile_to_image(file: FileStorage, dpi: int) -> Image.Image:
     return im
 
 
+def pdffile_to_images(file: FileStorage, dpi: int) -> list:
+    """Convert all pages of a PDF to a list of PIL Images."""
+    s = BytesIO()
+    file.save(s)
+    s.seek(0)
+    return convert_from_bytes(s.read(), dpi=dpi)
+
+
 def image_to_png_bytes(im: Image.Image) -> bytes:
     image_buffer = BytesIO()
     im.save(image_buffer, format="PNG")

@@ -29,8 +29,9 @@ function formData(cut_once = false) {
     const wantsText     = printType === 'text' || printType === 'qrcode_text' || printType === 'shipping'
                           || (printType === 'image' && $('#image_text_overlay').is(':checked'));
     const wantsCode     = printType === 'qrcode' || printType === 'qrcode_text' || printType === 'shipping';
-    const wantsImage    = printType === 'image';
+    const wantsImage    = printType === 'image' || printType === 'split';
     const wantsShipping = printType === 'shipping';
+    const wantsSplit    = printType === 'split';
 
     var data = {
         label_size: $('#label_size').val(),
@@ -73,6 +74,22 @@ function formData(cut_once = false) {
         data['image_fit']            = $('#image_fit').is(':checked') ? 1 : 0;
         data['image_scaling_factor'] = parseInt($('#image_scaling_factor').val(), 10) || 0;
         data['image_rotation']       = parseInt($('#image_rotation').val(), 10) || 0;
+    }
+
+    if (wantsSplit) {
+        const n    = Math.max(2, Math.min(6, parseInt($('#split_num_labels').val(), 10) || 2));
+        const axis = $('input[name=split_axis]:checked').val() || 'horizontal';
+        data['split_num_labels']  = n;
+        data['split_axis']        = axis;
+        // Update live help text
+        const helpEl = document.getElementById('splitHelpText');
+        if (helpEl) {
+            if (axis === 'horizontal') {
+                helpEl.innerHTML = `Image scaled <strong>${n}×</strong> larger — place labels <strong>side by side</strong> (left → right).`;
+            } else {
+                helpEl.innerHTML = `Image split into <strong>${n}</strong> sections — place labels <strong>end to end</strong> (top → bottom).`;
+            }
+        }
     }
 
     if (wantsShipping) {
@@ -126,8 +143,17 @@ function updatePreview(data) {
     $('#previewImg').attr('src', 'data:image/png;base64,' + data);
     var img = $('#previewImg')[0];
     img.onload = function () {
-        $('#labelWidth').html((img.naturalWidth / get_dpi() * 2.54).toFixed(1));
-        $('#labelHeight').html((img.naturalHeight / get_dpi() * 2.54).toFixed(1));
+        var w = img.naturalWidth, h = img.naturalHeight;
+        $('#labelWidth').html((w / get_dpi() * 2.54).toFixed(1));
+        $('#labelHeight').html((h / get_dpi() * 2.54).toFixed(1));
+        // For very wide labels (landscape endless tape) the image would squish to a thin
+        // sliver under max-width:100%.  Fix: show at a guaranteed height and let the
+        // wrapper scroll horizontally.  For tall / normal labels fit to container width.
+        if (w > h * 2.5) {
+            img.style.cssText = 'height:220px;width:auto;max-width:none;display:block;';
+        } else {
+            img.style.cssText = 'width:100%;height:auto;max-width:100%;display:block;';
+        }
     };
 }
 
@@ -140,8 +166,8 @@ function updateAccordionAvailability(printType) {
 
     // Full-section disable rules
     const sectionRules = {
-        accordionFontSettings:  printType === 'qrcode' || (printType === 'image' && !imageOverlay),
-        accordionImageSettings: printType !== 'image',
+        accordionFontSettings:  printType === 'qrcode' || ((printType === 'image' || printType === 'split') && !imageOverlay),
+        accordionImageSettings: printType !== 'image' && printType !== 'split',
     };
     for (const [id, hidden] of Object.entries(sectionRules)) {
         const el = document.getElementById(id);
@@ -163,7 +189,9 @@ function updateAccordionAvailability(printType) {
 
     // Auto-open the primary section for the current print type
     let primarySection;
-    if (printType === 'image') {
+    if (printType === 'split') {
+        primarySection = 'accordionImageSettings';
+    } else if (printType === 'image') {
         primarySection = imageOverlay ? 'accordionFontSettings' : 'accordionImageSettings';
     } else {
         primarySection = {
@@ -196,8 +224,10 @@ function gen_label(isPreview = true, cut_once = false) {
     const printType = getEffectivePrintType();
     const imageOverlay = printType === 'image' && $('#image_text_overlay').is(':checked');
 
-    $('#groupLabelImage').toggle(printType === 'image');
+    $('#groupLabelImage').toggle(printType === 'image' || printType === 'split');
+    $('#groupLabelImage .form-check').toggle(printType === 'image');
     $('#groupImageOverlayText').toggle(imageOverlay);
+    $('#groupSplit').toggle(printType === 'split');
     $('#groupShipping').toggle(printType === 'shipping');
     $('#groupLabelText').toggle(printType === 'text');
     $('#groupCodeContent').toggle(printType === 'qrcode' || printType === 'qrcode_text');
@@ -208,7 +238,7 @@ function gen_label(isPreview = true, cut_once = false) {
     let type = isPreview ? 'preview' : 'printing';
     setStatus({ type: type, status: 'pending' });
 
-    if ($('input[name=print_type]:checked').val() == 'image') {
+    if (['image', 'split'].includes($('input[name=print_type]:checked').val())) {
         dropZoneMode = isPreview ? 'preview' : 'printing';
         imageDropZone.processQueue();
         return;
@@ -417,8 +447,9 @@ document.addEventListener('DOMContentLoaded', function () {
         autoProcessQueue: false,
         thumbnailMethod: 'contain',
         init: function () {
-            this.on('addedfile', function () {
+            this.on('addedfile', function (file) {
                 if (this.files[1] != null) this.removeFile(this.files[0]);
+                if (typeof cropTool !== 'undefined') cropTool.onFileAdded(file);
             });
         },
         sending: function (file, xhr, formDataObj) {
@@ -438,6 +469,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         removedfile: function (file) {
             file.previewElement.remove();
+            if (typeof cropTool !== 'undefined') cropTool.onFileRemoved();
             preview();
             updatePreview('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=');
         }

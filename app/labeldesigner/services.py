@@ -21,6 +21,7 @@ from app.utils import (
     convert_image_to_grayscale,
     convert_image_to_red_and_black,
     pdffile_to_image,
+    pdffile_to_images,
     imgfile_to_image,
 )
 
@@ -283,7 +284,7 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
             recipient_line_spacing=recipient_line_spacing,
         )
 
-    # Build simple label
+    # Build simple label (non-split types)
     return SimpleLabel(
         width=width,
         height=height,
@@ -313,3 +314,209 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
         counter=counter,
         code_text=context['code_text']
     )
+
+
+# ---------------------------------------------------------------------------
+# Split label factory
+# ---------------------------------------------------------------------------
+
+
+def _apply_crop(img: Image.Image, top_pct: float, right_pct: float,
+                bottom_pct: float, left_pct: float) -> Image.Image:
+    """Trim edges by percentage. Each value is 0–49."""
+    iw, ih = img.size
+    x0 = int(iw * left_pct / 100)
+    y0 = int(ih * top_pct / 100)
+    x1 = int(iw * (1 - right_pct / 100))
+    y1 = int(ih * (1 - bottom_pct / 100))
+    if x1 > x0 and y1 > y0:
+        return img.crop((x0, y0, x1, y1))
+    return img
+
+
+def _make_strip_label(strip, width, label_content, margin_left, margin_right,
+                      margin_top, margin_bottom):
+    return SimpleLabel(
+        width=width,
+        height=0,
+        label_content=label_content,
+        label_orientation=LabelOrientation.STANDARD,
+        label_type=LabelType.ENDLESS_LABEL,
+        label_margin=(margin_left, margin_right, margin_top, margin_bottom),
+        text=[],
+        image=strip,
+        image_fit=False,
+        image_scaling_factor=100.0,
+    )
+
+
+def create_split_labels_from_request(d: dict = {}, files: dict = {}):
+    """
+    Split an image/PDF into multiple endless-tape labels.
+
+    Two modes (split_axis):
+      'horizontal' — scales the image to N× the tape width and cuts it into
+                     N vertical strips.  Place labels side by side (left→right)
+                     to see the full image at N× the normal size.  Use this to
+                     make a shipping label or document readable.
+      'vertical'   — scales the image to fit the tape width and cuts it into
+                     N equal horizontal slices.  Place labels end to end
+                     (top→bottom) to read a long document in sequence.
+
+    An optional crop (trim %) is applied before scaling/splitting.
+
+    Returns (labels, split_axis).
+    """
+    label_size = d.get('label_size', '62')
+    kind = next((label.form_factor for label in ALL_LABELS if label.identifier == label_size), None)
+    if kind is None:
+        raise LookupError("Unknown label_size")
+
+    high_res = int(d.get('high_res', 0)) != 0
+    dpi = DEFAULT_DPI * 2 if high_res else DEFAULT_DPI
+
+    image_mode = d.get('image_mode', 'grayscale')
+    image_bw_threshold = int(d.get('image_bw_threshold', 70))
+
+    margin_left = int(d.get('margin_left', 20))
+    margin_right = int(d.get('margin_right', 20))
+    margin_top = int(d.get('margin_top', 12))
+    margin_bottom = int(d.get('margin_bottom', 12))
+
+    num_labels = max(2, min(6, int(d.get('split_num_labels', 2) or 2)))
+    split_axis = d.get('split_axis', 'horizontal')
+
+    crop_top    = max(0.0, min(49.0, float(d.get('crop_top_pct',    0) or 0)))
+    crop_right  = max(0.0, min(49.0, float(d.get('crop_right_pct',  0) or 0)))
+    crop_bottom = max(0.0, min(49.0, float(d.get('crop_bottom_pct', 0) or 0)))
+    crop_left   = max(0.0, min(49.0, float(d.get('crop_left_pct',   0) or 0)))
+
+    width, height = get_label_dimensions(label_size, high_res)
+    if height > width:
+        width, height = height, width
+
+    uploaded = files.get('image', None)
+    if uploaded is None:
+        raise ValueError("No image uploaded for Split mode")
+
+    _, ext = os.path.splitext(uploaded.filename or '')
+    ext = ext.lower()
+
+    if ext == '.pdf':
+        pages = pdffile_to_images(uploaded, dpi)
+        if not pages:
+            raise ValueError("PDF produced no pages")
+        total_h = sum(p.height for p in pages)
+        max_w = max(p.width for p in pages)
+        raw_img = Image.new('RGB', (max_w, total_h), 'white')
+        y_off = 0
+        for page in pages:
+            raw_img.paste(page, (0, y_off))
+            y_off += page.height
+    else:
+        raw_img = imgfile_to_image(uploaded)
+
+    # Convert colour mode
+    if image_mode == 'grayscale':
+        img = convert_image_to_grayscale(raw_img)
+        label_content = LabelContent.IMAGE_GRAYSCALE
+    elif image_mode == 'red_and_black':
+        img = convert_image_to_red_and_black(raw_img)
+        label_content = LabelContent.IMAGE_RED_BLACK
+    elif image_mode == 'colored':
+        img = raw_img.convert('RGB')
+        label_content = LabelContent.IMAGE_COLORED
+    else:
+        img = convert_image_to_bw(raw_img, image_bw_threshold)
+        label_content = LabelContent.IMAGE_BW
+
+    # Crop before scaling
+    img = _apply_crop(img, crop_top, crop_right, crop_bottom, crop_left)
+
+    content_width = max(width - margin_left - margin_right, 1)
+
+    labels = []
+
+    if split_axis == 'horizontal':
+        # Scale to num_labels × content_width → N vertical strips side by side
+        total_w = content_width * num_labels
+        iw, ih = img.size
+        img = img.resize((total_w, max(int(ih * total_w / iw), 1)),
+                         Image.Resampling.LANCZOS)
+        iw, ih = img.size
+        for i in range(num_labels):
+            x0, x1 = i * content_width, min((i + 1) * content_width, iw)
+            strip = img.crop((x0, 0, x1, ih))
+            if strip.width > 0 and strip.height > 0:
+                labels.append(_make_strip_label(
+                    strip, width, label_content,
+                    margin_left, margin_right, margin_top, margin_bottom))
+    else:
+        # vertical: scale to fit content_width → N horizontal slices end to end
+        iw, ih = img.size
+        img = img.resize((content_width, max(int(ih * content_width / iw), 1)),
+                         Image.Resampling.LANCZOS)
+        iw, ih = img.size
+        slice_h = max(ih // num_labels, 1)
+        for i in range(num_labels):
+            y0 = i * slice_h
+            y1 = ih if i == num_labels - 1 else y0 + slice_h
+            strip = img.crop((0, y0, iw, y1))
+            if strip.width > 0 and strip.height > 0:
+                labels.append(_make_strip_label(
+                    strip, width, label_content,
+                    margin_left, margin_right, margin_top, margin_bottom))
+
+    if not labels:
+        raise ValueError("Split produced no labels")
+
+    return labels, split_axis
+
+
+def create_split_preview(labels, split_axis='horizontal'):
+    """
+    Render a preview showing all split labels in order with clear separators.
+    Each section is a separate physical label.
+    For 'horizontal' axis: place labels side by side (←→).
+    For 'vertical' axis: place labels end to end (↑↓).
+    """
+    from PIL import ImageDraw, ImageFont
+    SEP_H = 20   # pixels between strips in the preview
+    BORDER = 3   # border around each strip
+    num = len(labels)
+    imgs = [lbl.generate(rotate=True) for lbl in labels]
+
+    max_w = max(im.width for im in imgs)
+    strip_w = max_w + 2 * BORDER
+    total_h = sum(im.height + 2 * BORDER for im in imgs) + SEP_H * (num - 1)
+    composite = Image.new('RGB', (strip_w, total_h), (230, 230, 230))
+    draw = ImageDraw.Draw(composite)
+
+    try:
+        font = ImageFont.load_default(size=14)
+    except Exception:
+        font = ImageFont.load_default()
+
+    arrow = '←→' if split_axis == 'horizontal' else '↑↓'
+
+    y = 0
+    for i, im in enumerate(imgs):
+        # White card background for this label
+        card_top = y
+        card_bottom = y + im.height + 2 * BORDER
+        draw.rectangle([0, card_top, strip_w - 1, card_bottom - 1],
+                       fill='white', outline=(100, 100, 100), width=BORDER)
+        composite.paste(im, (BORDER, y + BORDER))
+
+        # Badge: "Label 1 of 2 ←→"
+        badge = f" Label {i + 1} of {num} {arrow} "
+        bb = draw.textbbox((0, 0), badge, font=font)
+        bw, bh = bb[2] - bb[0], bb[3] - bb[1]
+        bx = strip_w - bw - BORDER - 2
+        by = y + BORDER + 2
+        draw.rectangle([bx - 2, by - 1, bx + bw + 2, by + bh + 1], fill=(50, 50, 50))
+        draw.text((bx, by), badge, fill='white', font=font)
+
+        y = card_bottom + SEP_H
+
+    return composite

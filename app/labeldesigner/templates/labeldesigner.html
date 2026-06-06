@@ -309,15 +309,57 @@
             <input type="radio" class="btn-check" name="print_type" id="printTypeShipping" autocomplete="off" value="shipping"
                 onchange="preview()" aria-label="Shipping" {% if default_print_type=='shipping' %}checked{% endif %}>
             <label class="btn btn-outline-primary" for="printTypeShipping"><span class="fas fa-truck fa-lg" aria-hidden="true"></span><br>Shipping</label>
+            <input type="radio" class="btn-check" name="print_type" id="printTypeSplit" autocomplete="off" value="split"
+                onchange="preview()" aria-label="Split" {% if default_print_type=='split' %}checked{% endif %}>
+            <label class="btn btn-outline-primary" for="printTypeSplit"><span class="fas fa-scissors fa-lg" aria-hidden="true"></span><br>Split</label>
         </div>
         <hr class="mt-3 mb-2">
         <fieldset id="groupLabelImage">
             <label class="form-label mt-2 mb-0">Label Image:</label>
             <form class="dropzone" id="image-dropzone">
             </form>
+            <div id="cropPanel" class="mt-2" style="display:none">
+                <div id="cropLoadingNote" class="text-muted small" style="display:none">
+                    <span class="fas fa-spinner fa-spin me-1"></span>Rendering PDF&hellip;
+                </div>
+                <div id="cropImageTools">
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="cropTool.open()">
+                        <span class="fas fa-crop-simple me-1"></span>Crop image
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="resetCropBtn" style="display:none" onclick="cropTool.resetCrop()">
+                        <span class="fas fa-rotate-left me-1"></span>Reset crop
+                    </button>
+                </div>
+            </div>
             <div class="form-check mt-2">
                 <input class="form-check-input" type="checkbox" onchange="preview()" id="image_text_overlay" data-default="0">
                 <label class="form-check-label" for="image_text_overlay">Add text overlay</label>
+            </div>
+        </fieldset>
+        <fieldset id="groupSplit" style="display:none">
+            <div class="card mt-2">
+                <div class="card-header"><span class="fas fa-scissors fa-xs me-1"></span> Split Settings</div>
+                <div class="card-body pb-2">
+                    <label class="form-label mb-1">Split direction</label>
+                    <div class="btn-group d-flex mb-2" role="radiogroup">
+                        <input type="radio" class="btn-check" name="split_axis" id="split_axis_h" value="horizontal"
+                            autocomplete="off" checked data-default="1" onchange="preview()">
+                        <label class="btn btn-outline-secondary btn-sm w-50" for="split_axis_h">
+                            <span class="fas fa-arrows-left-right fa-xs me-1"></span> Side by side
+                        </label>
+                        <input type="radio" class="btn-check" name="split_axis" id="split_axis_v" value="vertical"
+                            autocomplete="off" onchange="preview()">
+                        <label class="btn btn-outline-secondary btn-sm w-50" for="split_axis_v">
+                            <span class="fas fa-arrows-up-down fa-xs me-1"></span> End to end
+                        </label>
+                    </div>
+                    <label class="form-label mb-1" for="split_num_labels">Number of labels</label>
+                    <input type="number" class="form-control form-control-sm mb-1" id="split_num_labels"
+                        data-default="2" min="2" max="6" value="2" onchange="preview()" oninput="preview()">
+                    <div class="form-text text-muted mb-0" id="splitHelpText">
+                        Image scaled <strong>2×</strong> — place labels <strong>side by side</strong>.
+                    </div>
+                </div>
             </div>
         </fieldset>
         <fieldset id="groupShipping" style="display:none">
@@ -449,7 +491,7 @@
     <div class="col-lg-4 col-md-4">
     <fieldset>
         <label for="previewImg" class="form-label mb-0">Label Preview:</label><br />
-        <img id="previewImg" />
+        <div id="previewWrapper"><img id="previewImg" /></div>
         <p>Printed size: <span id="labelWidth">?</span> cm x <span id="labelHeight">?</span> cm</p>
 
         <div>
@@ -503,6 +545,28 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Crop modal -->
+<div class="modal fade" id="cropModal" tabindex="-1" aria-labelledby="cropModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cropModalLabel">
+                    <span class="fas fa-crop-simple me-2"></span>Crop Image
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
+            </div>
+            <div class="modal-body p-2 d-flex justify-content-center align-items-start" id="cropModalBody">
+                <canvas id="cropCanvas" style="cursor:crosshair;display:block;border-radius:4px;max-width:100%;"></canvas>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="cropTool.applyTool()">
+                    <span class="fas fa-check me-1"></span>Done
+                </button>
             </div>
         </div>
     </div>

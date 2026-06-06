@@ -15,6 +15,8 @@ from app.utils import fill_first_line_fields, image_to_png_bytes
 from .printer import PrinterQueue, get_ptr_status, reset_printer_cache
 from .services import (
     create_label_from_request,
+    create_split_labels_from_request,
+    create_split_preview,
     create_printer_from_request,
     get_repo_dir,
     load_repo_json,
@@ -92,8 +94,12 @@ def preview_from_image():
     try:
         values = request.values.to_dict(flat=True)
         files = request.files.to_dict(flat=True)
-        label = create_label_from_request(values, files)
-        im = label.generate(rotate=True)
+        if values.get('print_type') == 'split':
+            labels, split_axis = create_split_labels_from_request(values, files)
+            im = create_split_preview(labels, split_axis)
+        else:
+            label = create_label_from_request(values, files)
+            im = label.generate(rotate=True)
     except Exception as e:
         current_app.logger.exception(e)
         error = 413 if "too long" in str(e) else 400
@@ -123,12 +129,21 @@ def print_label():
 
     status = ""
     try:
-        for i in range(print_count):
-            values = request.values.to_dict(flat=True)
-            files = request.files.to_dict(flat=True)
-            label = create_label_from_request(values, files, i)
-            cut = not cut_once or (cut_once and i == print_count - 1)
-            printer.add_label_to_queue(label, cut, high_res)
+        values = request.values.to_dict(flat=True)
+        files = request.files.to_dict(flat=True)
+        if values.get('print_type') == 'split':
+            split_labels, _axis = create_split_labels_from_request(values, files)
+            total = len(split_labels)
+            for rep in range(print_count):
+                for i, lbl in enumerate(split_labels):
+                    is_last = (rep == print_count - 1 and i == total - 1)
+                    cut = not cut_once or (cut_once and is_last)
+                    printer.add_label_to_queue(lbl, cut, high_res)
+        else:
+            for i in range(print_count):
+                label = create_label_from_request(values, files, i)
+                cut = not cut_once or (cut_once and i == print_count - 1)
+                printer.add_label_to_queue(label, cut, high_res)
         status = printer.process_queue()
     except Exception as e:
         return_dict['message'] = str(e)
