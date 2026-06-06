@@ -321,6 +321,15 @@ def create_label_from_request(d: dict = {}, files: dict = {}, counter: int = 0):
 # ---------------------------------------------------------------------------
 
 
+def _img_white(mode: str):
+    """Return a white fill value for the given PIL image mode."""
+    if mode in ('L', 'P', '1'):
+        return 255
+    if mode in ('RGBA', 'LA'):
+        return (255, 255, 255, 255)
+    return (255, 255, 255)  # RGB and everything else
+
+
 def _apply_crop(img: Image.Image, top_pct: float, right_pct: float,
                 bottom_pct: float, left_pct: float) -> Image.Image:
     """Trim edges by percentage. Each value is 0–49."""
@@ -438,21 +447,29 @@ def create_split_labels_from_request(d: dict = {}, files: dict = {}):
     labels = []
 
     if split_axis == 'horizontal':
-        # Scale to num_labels × content_width → N vertical strips side by side
-        total_w = content_width * num_labels
+        # Scale image so the full combined strip (minus outer margins) fills
+        # num_labels tape widths.  Build one wide canvas, paste, then slice —
+        # this way only the outermost edges carry a margin; inner seams are
+        # seamless.
+        outer_w = max(num_labels * width - margin_left - margin_right, 1)
         iw, ih = img.size
-        img = img.resize((total_w, max(int(ih * total_w / iw), 1)),
-                         Image.Resampling.LANCZOS)
-        iw, ih = img.size
+        img_scaled = img.resize(
+            (outer_w, max(int(ih * outer_w / iw), 1)),
+            Image.Resampling.LANCZOS,
+        )
+        canvas_w = num_labels * width
+        canvas = Image.new(img_scaled.mode, (canvas_w, img_scaled.height),
+                           _img_white(img_scaled.mode))
+        canvas.paste(img_scaled, (margin_left, 0))
         for i in range(num_labels):
-            x0, x1 = i * content_width, min((i + 1) * content_width, iw)
-            strip = img.crop((x0, 0, x1, ih))
+            strip = canvas.crop((i * width, 0, (i + 1) * width, canvas.height))
             if strip.width > 0 and strip.height > 0:
                 labels.append(_make_strip_label(
                     strip, width, label_content,
-                    margin_left, margin_right, margin_top, margin_bottom))
+                    0, 0, margin_top, margin_bottom))  # left/right baked into canvas
     else:
-        # vertical: scale to fit content_width → N horizontal slices end to end
+        # vertical: scale to fit content_width → N horizontal slices end to end.
+        # Remove margins on interior edges so strips join without gaps.
         iw, ih = img.size
         img = img.resize((content_width, max(int(ih * content_width / iw), 1)),
                          Image.Resampling.LANCZOS)
@@ -463,9 +480,11 @@ def create_split_labels_from_request(d: dict = {}, files: dict = {}):
             y1 = ih if i == num_labels - 1 else y0 + slice_h
             strip = img.crop((0, y0, iw, y1))
             if strip.width > 0 and strip.height > 0:
+                mt = margin_top    if i == 0               else 0
+                mb = margin_bottom if i == num_labels - 1  else 0
                 labels.append(_make_strip_label(
                     strip, width, label_content,
-                    margin_left, margin_right, margin_top, margin_bottom))
+                    margin_left, margin_right, mt, mb))
 
     if not labels:
         raise ValueError("Split produced no labels")

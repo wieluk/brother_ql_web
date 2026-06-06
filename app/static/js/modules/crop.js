@@ -6,17 +6,19 @@ var cropTool = (function () {
     // -----------------------------------------------------------------------
     // State
     // -----------------------------------------------------------------------
-    var _originalFile = null;
-    var _sourceImage  = null;   // HTMLImageElement or HTMLCanvasElement
-    var _scale        = 1;      // canvas-px / source-px
-    var _sel          = { x: 0, y: 0, w: 0, h: 0 };
-    var _drag         = { active: false, mode: null,
-                          startMX: 0, startMY: 0,
-                          startX: 0, startY: 0, startW: 0, startH: 0 };
-    var _cropApplied  = false;
-    var _addingResult = false;  // true while we are programmatically swapping the dropzone file
-    var _modalReady   = false;  // one-time hidden.bs.modal listener attached
-    var HANDLE = 10;
+    var _originalFile  = null;   // file the user originally dropped
+    var _sourceImage   = null;   // HTMLImageElement or canvas of the original
+    var _croppedCanvas = null;   // canvas of the most-recently applied crop
+    var _currentSource = null;   // which source is active in the modal right now
+    var _scale         = 1;      // canvas-px / source-px
+    var _sel           = { x: 0, y: 0, w: 0, h: 0 };
+    var _drag          = { active: false, mode: null,
+                           startMX: 0, startMY: 0,
+                           startX: 0, startY: 0, startW: 0, startH: 0 };
+    var _cropApplied   = false;
+    var _addingResult  = false;  // true while we programmatically swap the dropzone file
+    var _modalReady    = false;
+    var HANDLE         = 10;
 
     // -----------------------------------------------------------------------
     // DOM / source helpers
@@ -73,18 +75,18 @@ var cropTool = (function () {
     // -----------------------------------------------------------------------
     function draw() {
         var canvas = el('cropCanvas');
-        if (!canvas || !_sourceImage) return;
+        if (!canvas || !_currentSource) return;
         var ctx = canvas.getContext('2d');
         var s   = normSel();
 
-        ctx.drawImage(_sourceImage, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(_currentSource, 0, 0, canvas.width, canvas.height);
 
         ctx.fillStyle = 'rgba(0,0,0,0.55)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (s.w > 1 && s.h > 1) {
             ctx.drawImage(
-                _sourceImage,
+                _currentSource,
                 s.x / _scale, s.y / _scale, s.w / _scale, s.h / _scale,
                 s.x, s.y, s.w, s.h
             );
@@ -110,7 +112,6 @@ var cropTool = (function () {
             ctx.stroke();
             ctx.restore();
 
-            // Corner handles
             [[s.x, s.y], [s.x + s.w, s.y], [s.x, s.y + s.h], [s.x + s.w, s.y + s.h]]
                 .forEach(function (pt) {
                     ctx.fillStyle   = '#fff';
@@ -255,31 +256,28 @@ var cropTool = (function () {
         _modalReady = true;
         var modalEl = el('cropModal');
         if (!modalEl) return;
-        // Always detach canvas events when modal fully closes (any trigger)
         modalEl.addEventListener('hidden.bs.modal', function () {
             detachCanvasEvents();
         });
     }
 
-    function open() {
-        if (!_sourceImage) return;
+    function _openWithSource(source) {
+        if (!source) return;
+        _currentSource = source;
         _ensureModalListener();
         var modalEl = el('cropModal');
         if (!modalEl) return;
-
         var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
 
-        // Size canvas once the modal is fully visible and has a real layout
         modalEl.addEventListener('shown.bs.modal', function () {
             var body  = el('cropModalBody');
             var maxW  = Math.max(300, body.clientWidth - 4);
-            // Also fit vertically so the full image is visible without scrolling
             var maxH  = Math.round(window.innerHeight * 0.72);
-            _scale = Math.min(1, maxW / srcW(_sourceImage), maxH / srcH(_sourceImage));
+            _scale = Math.min(1, maxW / srcW(_currentSource), maxH / srcH(_currentSource));
 
             var canvas    = el('cropCanvas');
-            canvas.width  = Math.round(srcW(_sourceImage) * _scale);
-            canvas.height = Math.round(srcH(_sourceImage) * _scale);
+            canvas.width  = Math.round(srcW(_currentSource) * _scale);
+            canvas.height = Math.round(srcH(_currentSource) * _scale);
 
             _sel  = { x: 0, y: 0, w: canvas.width, h: canvas.height };
             _drag = { active: false };
@@ -289,6 +287,12 @@ var cropTool = (function () {
 
         modal.show();
     }
+
+    // Crop from original source
+    function open() { _openWithSource(_sourceImage); }
+
+    // Crop from the most-recently applied crop result
+    function openMore() { _openWithSource(_croppedCanvas); }
 
     function close() {
         var modalEl = el('cropModal');
@@ -303,7 +307,7 @@ var cropTool = (function () {
     // Apply / reset
     // -----------------------------------------------------------------------
     function applyTool() {
-        if (!_sourceImage) return;
+        if (!_currentSource) return;
         var s  = normSel();
         var ox = Math.round(s.x / _scale);
         var oy = Math.round(s.y / _scale);
@@ -312,29 +316,35 @@ var cropTool = (function () {
 
         var out = document.createElement('canvas');
         out.width = ow; out.height = oh;
-        out.getContext('2d').drawImage(_sourceImage, ox, oy, ow, oh, 0, 0, ow, oh);
+        out.getContext('2d').drawImage(_currentSource, ox, oy, ow, oh, 0, 0, ow, oh);
 
         out.toBlob(function (blob) {
-            var cropped = new File([blob], 'cropped.png', { type: 'image/png' });
-            _cropApplied  = true;
-            _addingResult = true;
+            _croppedCanvas = out;   // remember this crop for "Crop more"
+            _cropApplied   = true;
+            _addingResult  = true;
             close();
+            var cropped = new File([blob], 'cropped.png', { type: 'image/png' });
             try { imageDropZone.removeAllFiles(true); } catch (e) {}
             try { imageDropZone.addFile(cropped); }    catch (e) {}
             var rb = el('resetCropBtn');
             if (rb) rb.style.display = '';
+            var cm = el('cropMoreBtn');
+            if (cm) cm.style.display = '';
         }, 'image/png');
     }
 
     function resetCrop() {
         if (!_originalFile) return;
-        _cropApplied  = false;
-        _addingResult = true;
+        _cropApplied   = false;
+        _croppedCanvas = null;
+        _addingResult  = true;
         close();
         try { imageDropZone.removeAllFiles(true); } catch (e) {}
         try { imageDropZone.addFile(_originalFile); } catch (e) {}
         var rb = el('resetCropBtn');
         if (rb) rb.style.display = 'none';
+        var cm = el('cropMoreBtn');
+        if (cm) cm.style.display = 'none';
     }
 
     // -----------------------------------------------------------------------
@@ -348,11 +358,14 @@ var cropTool = (function () {
             return;
         }
 
-        _originalFile = file;
-        _cropApplied  = false;
+        _originalFile  = file;
+        _cropApplied   = false;
+        _croppedCanvas = null;
 
         var rb = el('resetCropBtn');
         if (rb) rb.style.display = 'none';
+        var cm = el('cropMoreBtn');
+        if (cm) cm.style.display = 'none';
 
         var loading = el('cropLoadingNote');
         var tools   = el('cropImageTools');
@@ -393,17 +406,21 @@ var cropTool = (function () {
 
     function onFileRemoved() {
         if (_addingResult) return;
-        _originalFile = null;
-        _sourceImage  = null;
-        _cropApplied  = false;
+        _originalFile  = null;
+        _sourceImage   = null;
+        _croppedCanvas = null;
+        _cropApplied   = false;
         var panel = el('cropPanel');
         if (panel) panel.style.display = 'none';
         var rb = el('resetCropBtn');
         if (rb) rb.style.display = 'none';
+        var cm = el('cropMoreBtn');
+        if (cm) cm.style.display = 'none';
     }
 
     return {
         open:          open,
+        openMore:      openMore,
         close:         close,
         applyTool:     applyTool,
         resetCrop:     resetCrop,
