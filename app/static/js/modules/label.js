@@ -29,9 +29,9 @@ function formData(cut_once = false) {
     const wantsText     = printType === 'text' || printType === 'qrcode_text' || printType === 'shipping'
                           || (printType === 'image' && $('#image_text_overlay').is(':checked'));
     const wantsCode     = printType === 'qrcode' || printType === 'qrcode_text' || printType === 'shipping';
-    const wantsImage    = printType === 'image' || printType === 'split';
+    const wantsImage    = printType === 'image';
     const wantsShipping = printType === 'shipping';
-    const wantsSplit    = printType === 'split';
+    const wantsSplit    = printType === 'image';
 
     var data = {
         label_size: $('#label_size').val(),
@@ -77,14 +77,16 @@ function formData(cut_once = false) {
     }
 
     if (wantsSplit) {
-        const n    = Math.max(2, Math.min(6, parseInt($('#split_num_labels').val(), 10) || 2));
+        const n    = Math.max(1, Math.min(6, parseInt($('#split_num_labels').val(), 10) || 1));
         const axis = $('input[name=split_axis]:checked').val() || 'horizontal';
         data['split_num_labels']  = n;
         data['split_axis']        = axis;
         // Update live help text
         const helpEl = document.getElementById('splitHelpText');
         if (helpEl) {
-            if (axis === 'horizontal') {
+            if (n === 1) {
+                helpEl.innerHTML = `Single label — crop only, no split.`;
+            } else if (axis === 'horizontal') {
                 helpEl.innerHTML = `Image scaled <strong>${n}×</strong> larger — place labels <strong>side by side</strong> (left → right).`;
             } else {
                 helpEl.innerHTML = `Image split into <strong>${n}</strong> sections — place labels <strong>end to end</strong> (top → bottom).`;
@@ -166,8 +168,8 @@ function updateAccordionAvailability(printType) {
 
     // Full-section disable rules
     const sectionRules = {
-        accordionFontSettings:  printType === 'qrcode' || ((printType === 'image' || printType === 'split') && !imageOverlay),
-        accordionImageSettings: printType !== 'image' && printType !== 'split',
+        accordionFontSettings:  printType === 'qrcode' || (printType === 'image' && !imageOverlay),
+        accordionImageSettings: printType !== 'image',
     };
     for (const [id, hidden] of Object.entries(sectionRules)) {
         const el = document.getElementById(id);
@@ -189,9 +191,7 @@ function updateAccordionAvailability(printType) {
 
     // Auto-open the primary section for the current print type
     let primarySection;
-    if (printType === 'split') {
-        primarySection = 'accordionImageSettings';
-    } else if (printType === 'image') {
+    if (printType === 'image') {
         primarySection = imageOverlay ? 'accordionFontSettings' : 'accordionImageSettings';
     } else {
         primarySection = {
@@ -224,10 +224,10 @@ function gen_label(isPreview = true, cut_once = false) {
     const printType = getEffectivePrintType();
     const imageOverlay = printType === 'image' && $('#image_text_overlay').is(':checked');
 
-    $('#groupLabelImage').toggle(printType === 'image' || printType === 'split');
+    $('#groupLabelImage').toggle(printType === 'image');
     $('#groupLabelImage .form-check').toggle(printType === 'image');
     $('#groupImageOverlayText').toggle(imageOverlay);
-    $('#groupSplit').toggle(printType === 'split');
+    $('#groupSplit').toggle(printType === 'image');
     $('#groupShipping').toggle(printType === 'shipping');
     $('#groupLabelText').toggle(printType === 'text');
     $('#groupCodeContent').toggle(printType === 'qrcode' || printType === 'qrcode_text');

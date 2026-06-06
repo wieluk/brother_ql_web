@@ -392,7 +392,7 @@ def create_split_labels_from_request(d: dict = {}, files: dict = {}):
     margin_top = int(d.get('margin_top', 12))
     margin_bottom = int(d.get('margin_bottom', 12))
 
-    num_labels = max(2, min(6, int(d.get('split_num_labels', 2) or 2)))
+    num_labels = max(1, min(6, int(d.get('split_num_labels', 1) or 1)))
     split_axis = d.get('split_axis', 'horizontal')
 
     crop_top    = max(0.0, min(49.0, float(d.get('crop_top_pct',    0) or 0)))
@@ -442,6 +442,9 @@ def create_split_labels_from_request(d: dict = {}, files: dict = {}):
     # Crop before scaling
     img = _apply_crop(img, crop_top, crop_right, crop_bottom, crop_left)
 
+    # B&W images must use NEAREST to preserve bar widths; anti-aliasing distorts barcodes
+    resample = Image.Resampling.NEAREST if image_mode == 'bw' else Image.Resampling.LANCZOS
+
     content_width = max(width - margin_left - margin_right, 1)
 
     labels = []
@@ -455,7 +458,7 @@ def create_split_labels_from_request(d: dict = {}, files: dict = {}):
         iw, ih = img.size
         img_scaled = img.resize(
             (outer_w, max(int(ih * outer_w / iw), 1)),
-            Image.Resampling.LANCZOS,
+            resample,
         )
         canvas_w = num_labels * width
         canvas = Image.new(img_scaled.mode, (canvas_w, img_scaled.height),
@@ -472,7 +475,7 @@ def create_split_labels_from_request(d: dict = {}, files: dict = {}):
         # Remove margins on interior edges so strips join without gaps.
         iw, ih = img.size
         img = img.resize((content_width, max(int(ih * content_width / iw), 1)),
-                         Image.Resampling.LANCZOS)
+                         resample)
         iw, ih = img.size
         slice_h = max(ih // num_labels, 1)
         for i in range(num_labels):

@@ -304,14 +304,11 @@
                 onchange="preview()" aria-label="Code" {% if default_print_type=='qrcode' or default_print_type=='qrcode_text' %}checked{% endif %}>
             <label class="btn btn-outline-primary" for="printTypeQrCode"><span class="fas fa-qrcode fa-lg" aria-hidden="true"></span><br>Code</label>
             <input type="radio" class="btn-check" name="print_type" id="printTypeImage" autocomplete="off" value="image"
-                onchange="preview()" aria-label="Image" {% if default_print_type=='image' %}checked{% endif %}>
-            <label class="btn btn-outline-primary" for="printTypeImage"><span class="fas fa-image fa-lg" aria-hidden="true"></span><br>Image</label>
+                onchange="preview()" aria-label="Image/PDF" {% if default_print_type=='image' or default_print_type=='split' %}checked{% endif %}>
+            <label class="btn btn-outline-primary" for="printTypeImage"><span class="fas fa-image fa-lg" aria-hidden="true"></span><br>Image/PDF</label>
             <input type="radio" class="btn-check" name="print_type" id="printTypeShipping" autocomplete="off" value="shipping"
                 onchange="preview()" aria-label="Shipping" {% if default_print_type=='shipping' %}checked{% endif %}>
             <label class="btn btn-outline-primary" for="printTypeShipping"><span class="fas fa-truck fa-lg" aria-hidden="true"></span><br>Shipping</label>
-            <input type="radio" class="btn-check" name="print_type" id="printTypeSplit" autocomplete="off" value="split"
-                onchange="preview()" aria-label="Split" {% if default_print_type=='split' %}checked{% endif %}>
-            <label class="btn btn-outline-primary" for="printTypeSplit"><span class="fas fa-scissors fa-lg" aria-hidden="true"></span><br>Split</label>
         </div>
         <hr class="mt-3 mb-2">
         <fieldset id="groupLabelImage">
@@ -358,7 +355,7 @@
                     </div>
                     <label class="form-label mb-1" for="split_num_labels">Number of labels</label>
                     <input type="number" class="form-control form-control-sm mb-1" id="split_num_labels"
-                        data-default="2" min="2" max="6" value="2" onchange="preview()" oninput="preview()">
+                        data-default="1" min="1" max="6" value="1" onchange="preview()" oninput="preview()">
                     <div class="form-text text-muted mb-0" id="splitHelpText">
                         Image scaled <strong>2×</strong> — place labels <strong>side by side</strong>.
                     </div>

@@ -94,7 +94,7 @@ def preview_from_image():
     try:
         values = request.values.to_dict(flat=True)
         files = request.files.to_dict(flat=True)
-        if values.get('print_type') == 'split':
+        if values.get('print_type') == 'image' and files.get('image'):
             labels, split_axis = create_split_labels_from_request(values, files)
             im = create_split_preview(labels, split_axis)
         else:
@@ -131,7 +131,7 @@ def print_label():
     try:
         values = request.values.to_dict(flat=True)
         files = request.files.to_dict(flat=True)
-        if values.get('print_type') == 'split':
+        if values.get('print_type') == 'image' and files.get('image'):
             split_labels, _axis = create_split_labels_from_request(values, files)
             total = len(split_labels)
             for rep in range(print_count):
